@@ -27,7 +27,7 @@ const db = getDatabase(app);
 const loader = new THREE.OBJLoader();
 
 // Unique player ID
-const playerId = `player_${Math.floor(Math.random() * 10000)}`;
+const playerId = prompt("Enter your username:", `player_${Math.floor(Math.random() * 10000)}`);
 document.addEventListener('DOMContentLoaded', () => {
   // Scene setup
   const scene = new THREE.Scene();
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // If the camera is within the threshold distance, create a sphere
       if (distance < thresholdDistance) {
         if (!starSpheres[i]) {
-          const sphereGeometry = new THREE.SphereGeometry(Math.random() * 100, 16, 16); // Small spheres
+          const sphereGeometry = new THREE.SphereGeometry(Math.random() * 500, 16, 16); // Small spheres
           const sphereMaterial = new THREE.MeshStandardMaterial({
             emissive: new THREE.Color(0xffffff), // Glow effect
             emissiveIntensity: 1, // Constant glow
@@ -118,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   }
-  const players = loader.load("")
   function teleportToRandomStar() {
     // Get all star positions from the geometry
     const positions = starGeometry.attributes.position.array;
@@ -160,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         otherPlayers[otherPlayerId] = otherPlayerModel;
         const playerText = document.createElement('div');
         playerText.className = 'player-text';
-        playerText.textContent = "Player " + otherPlayerId;
+        playerText.textContent = "Player " + otherPlayerId;w
         playerText.style.position = 'absolute';
         playerText.style.transform = 'translate(-50%, -100%)';
         playerTextContainer.appendChild(playerText);
