@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         otherPlayers[otherPlayerId] = otherPlayerModel;
         const playerText = document.createElement('div');
         playerText.className = 'player-text';
-        playerText.textContent = "Player " + otherPlayerId;w
+        playerText.textContent = "Player " + otherPlayerId;
         playerText.style.position = 'absolute';
         playerText.style.transform = 'translate(-50%, -100%)';
         playerTextContainer.appendChild(playerText);
