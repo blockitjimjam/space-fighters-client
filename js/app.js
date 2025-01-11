@@ -4,6 +4,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebas
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-analytics.js';
 import { getDatabase, ref, set, onValue, onChildAdded, onChildChanged, onChildRemoved, onDisconnect } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
 import { SolarSystem } from './solar-system.js';
+import { Marker, MarkerType } from './marker.js';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://google.com/docs/web/setup#available-libraries
 
@@ -158,8 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
         scene.add(otherPlayerModel);
         otherPlayers[otherPlayerId] = otherPlayerModel;
         const playerText = document.createElement('div');
-        playerText.className = 'player-text';
-        playerText.textContent = "Player " + otherPlayerId;
+        playerText.className = 'player-text player-text-border';
+        playerText.innerHTML = `<div class='player-label'>Player</div>${otherPlayerId}<div id='au-counter'></div>`;
         playerText.style.position = 'absolute';
         playerText.style.transform = 'translate(-50%, -100%)';
         playerTextContainer.appendChild(playerText);
@@ -227,19 +228,32 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
   function isPlayerInView(playerPosition) {
-    // Get the camera's frustum (viewable area)
-    const frustum = new THREE.Frustum();
-    const cameraViewProjectionMatrix = new THREE.Matrix4();
+    // Get the camera's position and direction
+    const cameraPosition = camera.position;
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection); // Get the forward direction of the camera
   
-    // Update the frustum based on the camera's projection and view matrices
-    camera.updateMatrixWorld(); // Make sure the camera's world matrix is updated
-    camera.matrixWorldInverse.getInverse(camera.matrixWorld);
-    cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    frustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
+    // Vector from the camera to the player
+    const toPlayer = new THREE.Vector3()
+      .subVectors(playerPosition, cameraPosition)
+      .normalize();
   
-    // Check if the player's position is within the frustum
-    return frustum.containsPoint(playerPosition);
+    // Angle between camera direction and direction to player
+    const angleToPlayer = cameraDirection.angleTo(toPlayer);
+  
+    // Horizontal and vertical FoV (in radians)
+    const horizontalFoV = THREE.MathUtils.degToRad(camera.fov);
+    const verticalFoV = horizontalFoV / camera.aspect;
+  
+    // Check if the player is within the camera's angular field of view
+    const isInViewAngle = angleToPlayer< horizontalFoV / 1.2;
+  
+    // Final visibility check
+    return isInViewAngle;
   }
+  window.isPlayerInView = isPlayerInView;
+  window.worldToScreen = worldToScreen;
+  
   
   // Update player text position with visibility check
   function updatePlayerTextPosition() {
@@ -253,14 +267,17 @@ document.addEventListener('DOMContentLoaded', () => {
   
         // Check if the player is in view
         const inView = isPlayerInView(playerPosition);
+        const distance = playerPosition.distanceTo(ship.position);
+        const distanceInAU = distance / 5000;
   
         // If the player is in view, update the position of the text
-        if (inView) {
+        if (inView && distanceInAU < 10000) {
           playerText.style.left = `${screenPosition.x}px`;
           playerText.style.top = `${screenPosition.y - 10}px`;
           playerText.style.display = 'block'; // Show the label
+          playerText.querySelector("#au-counter").textContent = `${distanceInAU.toFixed(5)} AU`;
         } else {
-          playerText.style.display = 'none'; // Hide the label if the player is out of view
+          playerText.style.display = 'none'; 
         }
       }
     });
@@ -307,6 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ship.rotation.x = 1.512;
     ship.scale.set(0.001, 0.001, 0.001);
     scene.add(ship);
+    markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, earth, ship))
   });
 
   // Movement and rotation controls
@@ -363,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
   `,
   };
   const warpPass = new THREE.ShaderPass(warpShader);
+  let markers = [];
   composer.addPass(warpPass);
   // Blue filter shader
   const blueFilterShader = {
@@ -488,7 +507,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const cameraOffset = new THREE.Vector3(0, 0.05, 0.2); // Offset from the player
 
   function interpolate(current, target, factor) {
-    return current + (target - current) * factor;
+    if (!((current + (target - current) * factor < 0.00000001) && (current + (target - current) * factor > 0))) {
+      return current + (target - current) * factor;
+    } else {
+      return 0;
+    }
   }
 
   // Target rotations for smooth interpolation
@@ -542,9 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Lock the camera's rotation to look at the ship
       camera.lookAt(ship.position);
-
-      // Preserve updatePlayerPosition() call
       updatePlayerPosition();
+      markers.forEach((element) => {element.update()});
       updatePlayerTextPosition();
     }
 

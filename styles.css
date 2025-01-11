@@ -19,9 +19,35 @@ body {
   font-size: 14px;
   color: white;
   background-color: rgba(0, 0, 0, 0.5);
-  padding: 5px;
-  border-color: red;
+  min-width: 10vw;
   border-width: 2px;
   border-style: solid;
   border-radius: 3px;
+}
+.player-text-border {
+  border-color: red;
+}
+.planet-text-border {
+  border-color: #348ceb;
+}
+.star-text-border {
+  border-color: white;
+}
+.player-label {
+  background-color: red;
+  color: white;
+  width: 100%;
+  text-transform: uppercase;
+}
+.planet-label {
+  background-color: #348ceb;
+  color: white;
+  width: 100%;
+  text-transform: uppercase;
+}
+.star-label {
+  background-color: #fff;
+  color: #000;
+  width: 100%;
+  text-transform: uppercase;
 }
