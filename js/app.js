@@ -3,7 +3,7 @@ let balls = 0.001;
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-analytics.js';
 import { getDatabase, ref, set, onValue, onChildAdded, onChildChanged, onChildRemoved, onDisconnect } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 import { SolarSystem } from './solar-system.js';
 import { Marker, MarkerType } from './marker.js';
@@ -722,9 +722,14 @@ document.getElementById('google-login').addEventListener('click', async () => {
   const provider = new GoogleAuthProvider();
 
   try {
+    // Sign the user out first if they are logged in with a different provider
+    if (auth.currentUser) {
+      await signOut(auth);
+    }
+
+    // Proceed with Google login
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
-
 
     const userRef = doc(firestoreDB, 'users', user.uid);
     const userSnapshot = await getDoc(userRef);
@@ -733,9 +738,10 @@ document.getElementById('google-login').addEventListener('click', async () => {
       const username = prompt('Choose a username:');
       await setDoc(userRef, { username, email: user.email });
     }
-
+    const username = await getUsername(user.uid); 
     document.getElementById("container").style.display = "none";
-    init(await getUsername(user.uid));
+    init(username); 
+
   } catch (error) {
     console.error(error.message);
     alert('Error signing up with Google: ' + error.message);
