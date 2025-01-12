@@ -27,6 +27,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
+window.auth = auth;
 const db = getDatabase(app);
 const firestoreDB = getFirestore(app);
 const loader = new THREE.OBJLoader();
