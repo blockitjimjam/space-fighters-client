@@ -71,6 +71,67 @@ function init(username) {
 
     const maxRadius = 5000000000; // Maximum radius of the starfield
     const thresholdDistance = 120000;
+    const movement = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+    };
+    const rotation = { x: 0, y: 0, z: 0 }; // Rotation angles
+    const rotationTarget = { x: 0, y: 0, z: 0 }; // Target rotation for interpolation
+    let warpActive = false;
+    let fovTarget = 75; // Default FOV
+    const maxFov = 179.6; // FOV during warp
+    const warpSpeeds = {
+      One: 500,
+      Two: 5000,
+      Three: 100000,
+      Four: 200000
+    }
+    const impulseSpeeds = {
+      Slow: 0.003,
+      Medium: 0.2,
+      Sscruise: 4
+    }
+    const renderer = new THREE.WebGLRenderer();
+    const transitionSpeed = 0.01;
+    const fovSpeed = 0.01; // How quickly FOV changes
+    const composer = new THREE.EffectComposer(renderer);
+    const renderPass = new THREE.RenderPass(scene, camera);
+    composer.addPass(renderPass);
+    let warpMode = warpSpeeds.One;
+    let impulseMode = impulseSpeeds.Slow;
+    document.getElementById("impulse-speed").addEventListener("change", () => {
+      switch (document.getElementById("impulse-speed").value) {
+        case "slow":
+          impulseMode = impulseSpeeds.Slow;
+          break; 
+        case "medium":
+          impulseMode = impulseSpeeds.Medium;
+          break; 
+        case "sscruise":
+          impulseMode = impulseSpeeds.Sscruise;
+          break;
+      }
+    });
+    document.getElementById("warp-speed").addEventListener("change", () => {
+      switch (document.getElementById("warp-speed").value) {
+        case "warp1":
+          warpMode = warpSpeeds.One;
+          break; 
+        case "warp2":
+          warpMode = warpSpeeds.Two;
+          break; 
+        case "warp3":
+          warpMode = warpSpeeds.Three;
+          break;
+        case "warp4":
+          warpMode = warpSpeeds.Four;
+          break;
+      }
+    });
 
     const seed = 70773; // Your seed value (use the same value for consistent results)
     const random = seededRandom(seed); // Create a random function with the seed
@@ -299,7 +360,6 @@ function init(username) {
     // Remove player from Firebase on disconnect
     onDisconnect(playerRef).remove();
     window.teleportToRandomStar = teleportToRandomStar;
-    const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     let solarSystem = new SolarSystem(scene);
@@ -342,29 +402,7 @@ function init(username) {
     });
 
     // Movement and rotation controls
-    const movement = {
-      forward: false,
-      backward: false,
-      left: false,
-      right: false,
-      up: false,
-      down: false,
-    };
-    const rotation = { x: 0, y: 0, z: 0 }; // Rotation angles
-    const rotationTarget = { x: 0, y: 0, z: 0 }; // Target rotation for interpolation
-    let warpActive = false;
-    let fovTarget = 75; // Default FOV
-    const maxFov = 179.6; // FOV during warp
-    const warpSpeeds = {
-      One: 500,
-      Two: 5000,
-      Three: 100000
-    }
-    const transitionSpeed = 0.01;
-    const fovSpeed = 0.01; // How quickly FOV changes
-    const composer = new THREE.EffectComposer(renderer);
-    const renderPass = new THREE.RenderPass(scene, camera);
-    composer.addPass(renderPass);
+
 
     // Add a bloom effect for the warp glow
     const bloomPass = new THREE.UnrealBloomPass(
@@ -542,7 +580,7 @@ function init(username) {
       let warpMovement = false;
       if (warpActive) {
         warpMovement = true;
-        const targetSpeed = warpSpeeds.Three || 1;
+        const targetSpeed = warpMode || 1;
         const progress = Math.min(speed / targetSpeed, 1); 
       
         // Using a sinusoidal ease-in/out to smooth the transition
@@ -557,10 +595,10 @@ function init(username) {
       
         console.log(speed);
       } else {
-        if (speed > 0.0031) {
+        if (speed > (impulseMode + 0.01)) {
         warpMovement = true;
-        const targetMinSpeed = 0.003;
-        const progress = Math.min((speed - 0.003) / (speed - targetMinSpeed), 1); 
+        const targetMinSpeed = impulseMode;
+        const progress = Math.min((speed - impulseMode) / (speed - targetMinSpeed), 1); 
         const smoothFactor = Math.sin(progress * Math.PI / 2);
         const transitionSpeed = (targetMinSpeed - speed) * smoothFactor;
         const speedChange = transitionSpeed * 0.03; 
@@ -569,7 +607,7 @@ function init(username) {
 
         console.log(speed);
         } else {
-          speed = 0.003;
+          speed = impulseMode;
         }
       }
       
