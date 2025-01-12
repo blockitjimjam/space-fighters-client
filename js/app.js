@@ -724,10 +724,13 @@ document.getElementById('google-login').addEventListener('click', async () => {
 
   try {
     // Sign the user out first if they are logged in with a different provider
-    if (auth.currentUser) {
-      await signOut(auth);
-      console.log("user signed out");
+    async function logOut() {
+      if (auth.currentUser) {
+        await signOut(auth);
+        console.log("user signed out");
+      }
     }
+    await logOut();
 
     // Proceed with Google login
     const result = await signInWithPopup(auth, provider);
