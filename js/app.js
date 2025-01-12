@@ -726,11 +726,13 @@ document.getElementById('google-login').addEventListener('click', async () => {
     // Sign the user out first if they are logged in with a different provider
     if (auth.currentUser) {
       await signOut(auth);
+      console.log("user signed out");
     }
 
     // Proceed with Google login
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
+    console.log(result.user)
 
     const userRef = doc(firestoreDB, 'users', user.uid);
     const userSnapshot = await getDoc(userRef);
