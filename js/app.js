@@ -343,7 +343,13 @@ function init(username) {
     let warpActive = false;
     let fovTarget = 75; // Default FOV
     const maxFov = 179.6; // FOV during warp
-    const fovSpeed = 0.1; // How quickly FOV changes
+    const warpSpeeds = {
+      One: 500,
+      Two: 5000,
+      Three: 10000
+    }
+    const transitionSpeed = 0.01;
+    const fovSpeed = 0.01; // How quickly FOV changes
     const composer = new THREE.EffectComposer(renderer);
     const renderPass = new THREE.RenderPass(scene, camera);
     composer.addPass(renderPass);
@@ -522,7 +528,7 @@ function init(username) {
     function animate() {
       requestAnimationFrame(animate);
       if (warpActive) {
-        speed = 100000;
+        speed = warpSpeeds.Three;
       } else {
         speed = 0.003;
       }
