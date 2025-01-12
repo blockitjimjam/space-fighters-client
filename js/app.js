@@ -671,6 +671,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     await setDoc(doc(firestoreDB, 'users', user.uid), { username, email });
     document.getElementById("container").style.display = "none";
     init(await getUsername(user.uid));
+    console.log("I came from signup form")
   } catch (error) {
     console.error(error.message);
     alert('Error signing up: ' + error.message);
@@ -689,6 +690,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     const user = result.user;
     document.getElementById("container").style.display = "none";
     init(await getUsername(user.uid));
+    console.log("I came from login form")
   } catch (error) {
     console.error(error.message);
     alert('Error logging in: ' + error.message);
@@ -714,6 +716,7 @@ document.getElementById('google-signup').addEventListener('click', async () => {
 
     document.getElementById("container").style.display = "none";
     init(await getUsername(user.uid));
+    console.log("I came from google signup")
   } catch (error) {
     console.error(error.message);
     alert('Error signing up with Google: ' + error.message);
@@ -735,7 +738,7 @@ document.getElementById('google-login').addEventListener('click', async () => {
       return; // Abort further execution
     }
 
-    // Proceed with Google login
+    // Proceed with Google loginsas
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
     console.log(result.user)
@@ -750,6 +753,7 @@ document.getElementById('google-login').addEventListener('click', async () => {
     const username = await getUsername(user.uid); 
     document.getElementById("container").style.display = "none";
     init(username); 
+    console.log("I came from google login")
 
   } catch (error) {
     console.error(error.message);

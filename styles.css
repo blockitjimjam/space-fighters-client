@@ -96,6 +96,7 @@ button:hover {
 
 .google-login {
   background-color: #00ffff;
+  display: flex;
   color: white;
 }
 
