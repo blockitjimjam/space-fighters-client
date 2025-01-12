@@ -23,15 +23,9 @@ export class Marker {
         container.appendChild(marker);
     }
     update() {
-        console.log("Update called. Properties:", {
-            model: this.model,
-            marker: this.marker,
-            ship: this.ship,
-        });
         if (this.model && this.marker && this.ship) {
             const playerPosition = this.model.position.clone();
             const screenPosition = worldToScreen(playerPosition);
-            console.log("yo")
     
             // Check if the player is in view
             const inView = isPlayerInView(playerPosition);

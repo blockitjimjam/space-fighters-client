@@ -15,6 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/shaders/CopyShader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://kit.fontawesome.com/b12596e433.js" crossorigin="anonymous"></script>
   </head>
   <body>
     <div id="container">
@@ -38,6 +39,25 @@
           <button id="google-login" class="google-login">Sign Up with Google</button>
         </form>
       </div>
+    </div>
+    <div class="game-ui-container">
+      <div id="warp-menu" style="display: none;">
+        <h2>Set Impulse Speed</h2>
+        <select id="impulse-speed">
+          <option>Slow</option>
+          <option>Medium</option>
+          <option>Star System cruise</option>
+        </select>
+        <h2>Set Warp Speed</h2>
+        <select id="warp-speed">
+          <option value="warp1">Warp 1</option>
+          <option value="warp2">Warp 2</option>
+          <option value="warp3">Warp 3</option>
+          <option value="warp4">Warp 4</option>
+        </select>
+      </div>
+
+      <button id="warp"><i class="fa-solid fa-bolt"></i></button>
     </div>
   </body>
 </html>

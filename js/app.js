@@ -30,7 +30,18 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const firestoreDB = getFirestore(app);
 const loader = new THREE.OBJLoader();
+document.querySelector(".game-ui-container").style.display = "none";
 function init(username) {
+  document.querySelector(".game-ui-container").style.display = "block";
+  document.querySelector("#warp").addEventListener("click", () => {
+    let menu = document.getElementById("warp-menu");
+    console.log("yo")
+    if (menu.style.display == "none") {
+      menu.style.display = "block";
+    } else {
+      menu.style.display = "none";
+    }
+  });
   const playerId = username;
     // Scene setup
     const scene = new THREE.Scene();
@@ -57,7 +68,7 @@ function init(username) {
     const starPositions = new Float32Array(starCount * 3); // x, y, z for each star
     const starSpheres = []; // Array to keep track of spheres near stars
 
-    const maxRadius = 3000000000; // Maximum radius of the starfield
+    const maxRadius = 5000000000; // Maximum radius of the starfield
     const thresholdDistance = 120000;
 
     const seed = 70773; // Your seed value (use the same value for consistent results)
@@ -346,7 +357,7 @@ function init(username) {
     const warpSpeeds = {
       One: 500,
       Two: 5000,
-      Three: 10000
+      Three: 100000
     }
     const transitionSpeed = 0.01;
     const fovSpeed = 0.01; // How quickly FOV changes
@@ -527,15 +538,45 @@ function init(username) {
     // Animation loop
     function animate() {
       requestAnimationFrame(animate);
+      let warpMovement = false;
       if (warpActive) {
-        speed = warpSpeeds.Three;
+        warpMovement = true;
+        const targetSpeed = warpSpeeds.Three || 1;
+        const progress = Math.min(speed / targetSpeed, 1); 
+      
+        // Using a sinusoidal ease-in/out to smooth the transition
+        const smoothFactor = Math.sin(progress * Math.PI / 2); // Sinusoidal ease-in
+        const transitionSpeed = (targetSpeed - speed) * smoothFactor;
+      
+        // Multiply the transition speed to make more granular speed changes
+        const speedChange = transitionSpeed * 0.05; // Lower this value to make the transition slower (more steps)
+        
+        speed += speedChange;
+        speed = Math.min(speed, targetSpeed);
+      
+        console.log(speed);
       } else {
-        speed = 0.003;
+        if (speed > 0.0031) {
+        warpMovement = true;
+        const targetMinSpeed = 0.003;
+        const progress = Math.min((speed - 0.003) / (speed - targetMinSpeed), 1); 
+        const smoothFactor = Math.sin(progress * Math.PI / 2);
+        const transitionSpeed = (targetMinSpeed - speed) * smoothFactor;
+        const speedChange = transitionSpeed * 0.03; 
+        speed += speedChange;
+        speed = Math.max(speed, targetMinSpeed); 
+
+        console.log(speed);
+        } else {
+          speed = 0.003;
+        }
       }
+      
+      
       if (ship) {
         // Update ship position with interpolation
         
-        if (movement.forward) {
+        if (movement.forward || warpMovement == true) {
           ship.position.z -= Math.cos(ship.rotation.y) * window.speed;
           ship.position.x -= Math.sin(ship.rotation.y) * window.speed;
         }
