@@ -42,6 +42,18 @@
       </div>
     </div>
     <div class="game-ui-container">
+      <div id="aim-cursor" style="display: none;"></div>
+      <div id="health-bar-ui">
+        <h1 style="color: white">SHIP STATUS</h1>
+        <p style="color: lime">Health <i class="fa-solid fa-chart-line"></i></p>
+        <div class="progress-container" id="health-height">
+          <div class="progress-bar" id="health-bar" style="width: 100%;"></div>
+        </div>
+        <p style="color: rgb(0, 191, 255)">Shield <i class="fa-solid fa-shield"></i></p>
+        <div class="progress-container" id="shield-height">
+          <div class="progress-bar" id="shield-bar" style="width: 100%;"></div>
+        </div>
+      </div>
       <div id="warp-menu" style="display: none;">
         <h2>Set Impulse Speed</h2>
         <select id="impulse-speed">

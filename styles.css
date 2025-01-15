@@ -76,7 +76,9 @@ form {
   flex-direction: column;
   gap: 10px;
 }
-
+.game-ui-container {
+  z-index: 2;
+}
 input {
   padding: 10px;
   border: 1px solid #ccc;
@@ -130,6 +132,52 @@ button:hover {
   border-color: #00ffff;
   border-width: 2px;
   border-style: solid;
+}
+#health-bar-ui {
+  position: absolute;
+  padding: 20px;
+  border-top-right-radius: 5em;
+  bottom: 0;
+  width: 20%;
+  left: 0;
+  background-image: linear-gradient(to bottom right, rgba(56, 56, 56, 0.753), rgba(201, 201, 201, 0.699));
+}
+.progress-container {
+  width: 100%;
+  height: 30px;
+  background-color: #1d0000;
+  border-radius: 15px;
+  overflow: hidden;
+}
+#aim-cursor {
+  position: fixed; 
+  top: 50%;
+  left: 50%;
+  width: 20px; 
+  height: 20px;
+  border: 2px solid red; 
+  border-radius: 50%; 
+  pointer-events: none; 
+  transform: translate(-50%, -50%);
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: 15px;
+  transition: width 0.4s ease;
+}
+#shield-bar {
+  background: linear-gradient(to right, rgb(38, 0, 255), rgb(0, 195, 255));
+}
+#health-bar {
+  background: linear-gradient(to right, rgb(0, 255, 0), rgb(217, 255, 0));
+}
+#shield-height {
+  height: 2vh;
+}
+#health-height {
+  height: 5vh;
 }
 select {
   background-color: #333;   /* Dark background */

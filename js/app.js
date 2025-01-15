@@ -7,6 +7,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 import { SolarSystem } from './solar-system.js';
 import { Marker, MarkerType } from './marker.js';
+import { Laser } from './laser.js';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://google.com/docs/web/setup#available-libraries
 
@@ -46,6 +47,7 @@ function init(username) {
   const playerId = username;
     // Scene setup
     const scene = new THREE.Scene();
+    const clock = new THREE.Clock();
     scene.background = new THREE.Color(0x000000); // Black background
 
     // Camera setup
@@ -85,15 +87,15 @@ function init(username) {
     let fovTarget = 75; // Default FOV
     const maxFov = 179.6; // FOV during warp
     const warpSpeeds = {
-      One: 500,
-      Two: 5000,
+      One: 5000,
+      Two: 50000,
       Three: 100000,
       Four: 200000
     }
     const impulseSpeeds = {
       Slow: 0.003,
-      Medium: 0.2,
-      Sscruise: 4
+      Medium: 0.09,
+      Sscruise: 1
     }
     const renderer = new THREE.WebGLRenderer();
     const transitionSpeed = 0.01;
@@ -211,6 +213,7 @@ function init(username) {
     }
     const otherPlayers = {};
     const playerTexts = {};
+    const myLasers = [];
     const playerTextContainer = document.createElement('div');
     playerTextContainer.style.position = 'absolute';
     playerTextContainer.style.top = '0';
@@ -398,7 +401,7 @@ function init(username) {
       ship.rotation.x = 1.512;
       ship.scale.set(0.001, 0.001, 0.001);
       scene.add(ship);
-      markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, earth, ship))
+      markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, solarSystem.planets["earth"], ship))
     });
 
     // Movement and rotation controls
@@ -471,8 +474,9 @@ function init(username) {
 
     const blueFilterPass = new THREE.ShaderPass(blueFilterShader);
     composer.addPass(blueFilterPass);
+    let fireZoom = false;
     document.addEventListener('keydown', (event) => {
-      switch (event.key) {
+      switch (event.key.toLowerCase()) {
         case 'w':
           movement.forward = true;
           break;
@@ -494,8 +498,11 @@ function init(username) {
         case 'p':
           window.speed = prompt("Enter new speed:", window.speed);
           break;
+        case 'z':
+          fireZoom = true;
+          break;
       }
-      if (event.key === "f" && !warpActive) {
+      if (event.key.toLowerCase() === "f" && !warpActive) {
         // Press 'w' to trigger warp
         warpActive = true;
         fovTarget = maxFov;
@@ -505,7 +512,7 @@ function init(username) {
     });
 
     document.addEventListener('keyup', (event) => {
-      switch (event.key) {
+      switch (event.key.toLowerCase()) {
         case 'w':
           movement.forward = false;
           break;
@@ -524,8 +531,11 @@ function init(username) {
         case 'Shift':
           movement.down = false;
           break;
+        case 'z':
+          fireZoom = false;
+          break;
       }
-      if (event.key === "f" && warpActive) {
+      if (event.key.toLowerCase() === "f" && warpActive) {
         // Release 'w' to deactivate warp
         warpActive = false;
         fovTarget = 75;
@@ -545,7 +555,35 @@ function init(username) {
     canvas.addEventListener('click', () => {
       canvas.requestPointerLock();
     });
+    let isMouseDown = false;
+    let cameraRotation = {x: 0, y: 0};
+    document.addEventListener('mousedown', (event) => {
+      if (event.button === 2) {
+        isMouseDown = true;
+        cameraRotation = {x: 0, y: 0};
+        document.getElementById("aim-cursor").style.display = "block";
+      } else if (event.button === 0) {
+        if (isMouseDown) {
+          const laserQuaternion = camera.quaternion.clone();
+          myLasers.push(new Laser(
+            scene,
+            ship.position, 
+            laserQuaternion, 
+            1.5, 
+            3
+          ))
+        }
+      } 
+      console.log('Mouse button pressed down!');
+    });
 
+    document.addEventListener('mouseup', (event) => {
+      if (event.button === 2) {
+        isMouseDown = false;
+        document.getElementById("aim-cursor").style.display = "none";
+      }
+      console.log('Mouse button released!');
+    });
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement === canvas) {
         console.log('Pointer locked');
@@ -556,16 +594,21 @@ function init(username) {
 
     document.addEventListener('mousemove', (event) => {
       if (document.pointerLockElement === canvas) {
-        rotationTarget.x = THREE.MathUtils.clamp(rotationTarget.x, -Math.PI / 2, Math.PI / 2); // Limit pitch
-        camera.rotation.x -= event.movementX * 0.002;
+        if (isMouseDown) {
+          // Adjust camera rotation based on mouse movement
+          cameraRotation.x -= event.movementY * 0.005;
+          cameraRotation.y -= event.movementX * 0.005;
+          cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotation.x));
+        }
       }
     });
 
     window.speed = 0.003; // Default speed
-    const cameraOffset = new THREE.Vector3(0, 0.05, 0.2); // Offset from the player
+    const cameraOffset = new THREE.Vector3(0, 0.03, 0.1); // Offset from the player
 
     function interpolate(current, target, factor) {
-      if (!((current + (target - current) * factor < 0.00000001) && (current + (target - current) * factor > 0))) {
+      if (!((current + (target - current) * factor < 0.01) && (current + (target - current) * factor > 0))) {
+        updatePlayerPosition();
         return current + (target - current) * factor;
       } else {
         return 0;
@@ -578,7 +621,10 @@ function init(username) {
     function animate() {
       requestAnimationFrame(animate);
       let warpMovement = false;
+      solarSystem.update();
+      fovTarget = 75;
       if (warpActive) {
+        fovTarget = maxFov;
         warpMovement = true;
         const targetSpeed = warpMode || 1;
         const progress = Math.min(speed / targetSpeed, 1); 
@@ -647,20 +693,49 @@ function init(username) {
         ship.rotation.y = interpolate(ship.rotation.y, rotationTarget.y, 0.1); // Yaw
         ship.rotation.z = interpolate(ship.rotation.z, rotationTarget.z, 0.1); // Bank (Roll)
 
-        // Update camera position to follow the ship
-        const offsetPosition = new THREE.Vector3().copy(cameraOffset).applyQuaternion(ship.quaternion);
-        camera.position.copy(ship.position).add(offsetPosition);
+        if (!isMouseDown) {
+          const offsetPosition = new THREE.Vector3().copy(cameraOffset).applyQuaternion(ship.quaternion);
+          camera.position.copy(ship.position).add(offsetPosition);
+          camera.lookAt(ship.position);
+          camera.fov += (fovTarget - camera.fov) * fovSpeed;
+        } else {
+          let cannonOffset = new THREE.Vector3(0, 0.01, 0);
+          const offsetPosition = new THREE.Vector3().copy(cannonOffset).applyQuaternion(ship.quaternion);
+          camera.position.copy(ship.position).add(offsetPosition);
+          const direction = new THREE.Vector3(
+            Math.cos(cameraRotation.x) * Math.sin(cameraRotation.y),
+            Math.sin(cameraRotation.x), 
+            Math.cos(cameraRotation.x) * Math.cos(cameraRotation.y)
+          );
+      
+          // Update camera's look direction
+          const lookAtPosition = new THREE.Vector3().copy(ship.position).add(direction);
+          camera.lookAt(lookAtPosition);
+          if (fireZoom) {
+            fovTarget = 25;
+          } else {
+            fovTarget = 75;
+          }
+          camera.fov += (fovTarget - camera.fov) * 0.5;
+        }
 
         // Lock the camera's rotation to look at the ship
-        camera.lookAt(ship.position);
-        updatePlayerPosition();
+        if (Object.values(movement).some(value => value)) {
+          updatePlayerPosition();
+        }
+        const deltaTime = clock.getDelta();
         markers.forEach((element) => {element.update()});
+        for (let i = myLasers.length - 1; i >= 0; i--) {
+          const isActive = myLasers[i].update(deltaTime);
+          if (!isActive) {
+            myLasers.splice(i, 1); // Remove inactive lasers
+          }
+        }
         updatePlayerTextPosition();
       }
 
       // Call other necessary updates
       checkStars();
-      camera.fov += (fovTarget - camera.fov) * fovSpeed;
       camera.updateProjectionMatrix();
       composer.render();
 
