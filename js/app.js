@@ -2,12 +2,12 @@ let balls = 0.001;
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-analytics.js';
-import { getDatabase, ref, set, onValue, onChildAdded, onChildChanged, onChildRemoved, onDisconnect } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
+import { getDatabase, ref, set, get, onValue, onChildAdded, onChildChanged, onChildRemoved, onDisconnect, remove } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 import { SolarSystem } from './solar-system.js';
 import { Marker, MarkerType } from './marker.js';
-import { Laser } from './laser.js';
+import { Laser, MultiplayerLaser } from './laser.js';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://google.com/docs/web/setup#available-libraries
 
@@ -23,6 +23,7 @@ const firebaseConfig = {
   appId: '1:976259904575:web:ee4134d8c59678dcfb348a',
   measurementId: 'G-EHXHPP69MJ',
 };
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -45,391 +46,442 @@ function init(username) {
     }
   });
   const playerId = username;
-    // Scene setup
-    const scene = new THREE.Scene();
-    const clock = new THREE.Clock();
-    scene.background = new THREE.Color(0x000000); // Black background
+  let health = 200;
+  let shield = 100;
+  // Scene setup
+  const scene = new THREE.Scene();
+  const clock = new THREE.Clock();
+  scene.background = new THREE.Color(0x000000); // Black background
 
-    // Camera setup
-    window.camera = new THREE.PerspectiveCamera(
-      75, // Field of view
-      window.innerWidth / window.innerHeight, // Aspect ratio
-      0.001, // Near clipping plane
-      1000000 // Far clipping plane
-    );
-    function seededRandom(seed) {
-      let value = seed % 2147483647;
-      if (value <= 0) value += 2147483646;
-      return function () {
-        value = (value * 16807) % 2147483647;
-        return (value - 1) / 2147483646;
-      };
-    }
-    camera.position.z = 5;
-    const starCount = 100000; // Number of stars
-    const starGeometry = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(starCount * 3); // x, y, z for each star
-    const starSpheres = []; // Array to keep track of spheres near stars
-
-    const maxRadius = 5000000000; // Maximum radius of the starfield
-    const thresholdDistance = 120000;
-    const movement = {
-      forward: false,
-      backward: false,
-      left: false,
-      right: false,
-      up: false,
-      down: false,
+  // Camera setup
+  window.camera = new THREE.PerspectiveCamera(
+    75, // Field of view
+    window.innerWidth / window.innerHeight, // Aspect ratio
+    0.001, // Near clipping plane
+    1000000 // Far clipping plane
+  );
+  function seededRandom(seed) {
+    let value = seed % 2147483647;
+    if (value <= 0) value += 2147483646;
+    return function () {
+      value = (value * 16807) % 2147483647;
+      return (value - 1) / 2147483646;
     };
-    const rotation = { x: 0, y: 0, z: 0 }; // Rotation angles
-    const rotationTarget = { x: 0, y: 0, z: 0 }; // Target rotation for interpolation
-    let warpActive = false;
-    let fovTarget = 75; // Default FOV
-    const maxFov = 179.6; // FOV during warp
-    const warpSpeeds = {
-      One: 5000,
-      Two: 50000,
-      Three: 100000,
-      Four: 200000
-    }
-    const impulseSpeeds = {
-      Slow: 0.003,
-      Medium: 0.09,
-      Sscruise: 1
-    }
-    const renderer = new THREE.WebGLRenderer();
-    const transitionSpeed = 0.01;
-    const fovSpeed = 0.01; // How quickly FOV changes
-    const composer = new THREE.EffectComposer(renderer);
-    const renderPass = new THREE.RenderPass(scene, camera);
-    composer.addPass(renderPass);
-    let warpMode = warpSpeeds.One;
-    let impulseMode = impulseSpeeds.Slow;
-    document.getElementById("impulse-speed").addEventListener("change", () => {
-      switch (document.getElementById("impulse-speed").value) {
-        case "slow":
-          impulseMode = impulseSpeeds.Slow;
-          break; 
-        case "medium":
-          impulseMode = impulseSpeeds.Medium;
-          break; 
-        case "sscruise":
-          impulseMode = impulseSpeeds.Sscruise;
-          break;
-      }
-    });
-    document.getElementById("warp-speed").addEventListener("change", () => {
-      switch (document.getElementById("warp-speed").value) {
-        case "warp1":
-          warpMode = warpSpeeds.One;
-          break; 
-        case "warp2":
-          warpMode = warpSpeeds.Two;
-          break; 
-        case "warp3":
-          warpMode = warpSpeeds.Three;
-          break;
-        case "warp4":
-          warpMode = warpSpeeds.Four;
-          break;
-      }
-    });
+  }
+  camera.position.z = 5;
+  const starCount = 100000; // Number of stars
+  const starGeometry = new THREE.BufferGeometry();
+  const starPositions = new Float32Array(starCount * 3); // x, y, z for each star
+  const starSpheres = []; // Array to keep track of spheres near stars
 
-    const seed = 70773; // Your seed value (use the same value for consistent results)
-    const random = seededRandom(seed); // Create a random function with the seed
+  const maxRadius = 5000000000; // Maximum radius of the starfield
+  const thresholdDistance = 120000;
+  const movement = {
+    forward: false,
+    backward: false,
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+  };
+  const rotation = { x: 0, y: 0, z: 0 }; // Rotation angles
+  const rotationTarget = { x: 0, y: 0, z: 0 }; // Target rotation for interpolation
+  let warpActive = false;
+  let fovTarget = 75; // Default FOV
+  const maxFov = 179.6; // FOV during warp
+  const warpSpeeds = {
+    One: 5000,
+    Two: 50000,
+    Three: 100000,
+    Four: 200000
+  }
+  const impulseSpeeds = {
+    Slow: 0.003,
+    Medium: 0.09,
+    Sscruise: 1
+  }
+  const renderer = new THREE.WebGLRenderer();
+  const transitionSpeed = 0.01;
+  const fovSpeed = 0.01; // How quickly FOV changes
+  const composer = new THREE.EffectComposer(renderer);
+  const renderPass = new THREE.RenderPass(scene, camera);
+  composer.addPass(renderPass);
+  let warpMode = warpSpeeds.One;
+  let impulseMode = impulseSpeeds.Slow;
+  document.getElementById("impulse-speed").addEventListener("change", () => {
+    switch (document.getElementById("impulse-speed").value) {
+      case "slow":
+        impulseMode = impulseSpeeds.Slow;
+        break;
+      case "medium":
+        impulseMode = impulseSpeeds.Medium;
+        break;
+      case "sscruise":
+        impulseMode = impulseSpeeds.Sscruise;
+        break;
+    }
+  });
+  document.getElementById("warp-speed").addEventListener("change", () => {
+    switch (document.getElementById("warp-speed").value) {
+      case "warp1":
+        warpMode = warpSpeeds.One;
+        break;
+      case "warp2":
+        warpMode = warpSpeeds.Two;
+        break;
+      case "warp3":
+        warpMode = warpSpeeds.Three;
+        break;
+      case "warp4":
+        warpMode = warpSpeeds.Four;
+        break;
+    }
+  });
+
+  const seed = 70773; // Your seed value (use the same value for consistent results)
+  const random = seededRandom(seed); // Create a random function with the seed
+
+  for (let i = 0; i < starCount; i++) {
+    const r = random() * maxRadius; // Random radius within the sphere
+    const theta = random() * Math.PI * 2; // Random angle
+    const phi = Math.acos(2 * random() - 1); // Random angle for sphere distribution
+
+    const x = r * Math.sin(phi) * Math.cos(theta);
+    const y = r * Math.sin(phi) * Math.sin(theta);
+    const z = r * Math.cos(phi);
+    starPositions.set([x, y, z], i * 3); // Set star position in the array
+  }
+
+  starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+
+  const starMaterial = new THREE.PointsMaterial({
+    color: 0xffffff, // White stars
+    size: 1, // Star size
+    sizeAttenuation: false, // Stars appear smaller with distance
+  });
+
+  // Create the starfield
+  const stars = new THREE.Points(starGeometry, starMaterial);
+  scene.add(stars);
+
+  // Function to check proximity to stars and render spheres
+  function checkStars() {
+    const positions = starGeometry.attributes.position.array;
 
     for (let i = 0; i < starCount; i++) {
-      const r = random() * maxRadius; // Random radius within the sphere
-      const theta = random() * Math.PI * 2; // Random angle
-      const phi = Math.acos(2 * random() - 1); // Random angle for sphere distribution
+      const x = positions[i * 3];
+      const y = positions[i * 3 + 1];
+      const z = positions[i * 3 + 2];
 
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
-      starPositions.set([x, y, z], i * 3); // Set star position in the array
-    }
+      const starPosition = new THREE.Vector3(x, y, z);
+      const distance = camera.position.distanceTo(starPosition);
 
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0xffffff, // White stars
-      size: 1, // Star size
-      sizeAttenuation: false, // Stars appear smaller with distance
-    });
-
-    // Create the starfield
-    const stars = new THREE.Points(starGeometry, starMaterial);
-    scene.add(stars);
-
-    // Function to check proximity to stars and render spheres
-    function checkStars() {
-      const positions = starGeometry.attributes.position.array;
-
-      for (let i = 0; i < starCount; i++) {
-        const x = positions[i * 3];
-        const y = positions[i * 3 + 1];
-        const z = positions[i * 3 + 2];
-
-        const starPosition = new THREE.Vector3(x, y, z);
-        const distance = camera.position.distanceTo(starPosition);
-
-        // If the camera is within the threshold distance, create a sphere
-        if (distance < thresholdDistance) {
-          if (!starSpheres[i]) {
-            const sphereGeometry = new THREE.SphereGeometry(Math.random() * 500, 16, 16); // Small spheres
-            const sphereMaterial = new THREE.MeshStandardMaterial({
-              emissive: new THREE.Color(0xffffff), // Glow effect
-              emissiveIntensity: 1, // Constant glow
-              color: 0xffffff,
-            });
-            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-            sphere.position.set(x, y, z);
-            scene.add(sphere);
-            starSpheres[i] = sphere; // Store the sphere for future checks
-          }
-        } else {
-          // If star is out of range and a sphere exists, remove it
-          if (starSpheres[i]) {
-            scene.remove(starSpheres[i]);
-            starSpheres[i] = null;
-          }
+      // If the camera is within the threshold distance, create a sphere
+      if (distance < thresholdDistance) {
+        if (!starSpheres[i]) {
+          const sphereGeometry = new THREE.SphereGeometry(Math.random() * 500, 16, 16); // Small spheres
+          const sphereMaterial = new THREE.MeshStandardMaterial({
+            emissive: new THREE.Color(0xffffff), // Glow effect
+            emissiveIntensity: 1, // Constant glow
+            color: 0xffffff,
+          });
+          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+          sphere.position.set(x, y, z);
+          scene.add(sphere);
+          starSpheres[i] = sphere; // Store the sphere for future checks
+        }
+      } else {
+        // If star is out of range and a sphere exists, remove it
+        if (starSpheres[i]) {
+          scene.remove(starSpheres[i]);
+          starSpheres[i] = null;
         }
       }
     }
-    function teleportToRandomStar() {
-      // Get all star positions from the geometry
-      const positions = starGeometry.attributes.position.array;
+  }
+  let pendingDamage = false;
+  function teleportToRandomStar() {
+    // Get all star positions from the geometry
+    const positions = starGeometry.attributes.position.array;
 
-      // Select a random star index
-      const randomIndex = Math.floor(Math.random() * starCount);
+    // Select a random star index
+    const randomIndex = Math.floor(Math.random() * starCount);
 
-      // Extract the x, y, z position of the selected star
-      const x = positions[randomIndex * 3];
-      const y = positions[randomIndex * 3 + 1];
-      const z = positions[randomIndex * 3 + 2];
+    // Extract the x, y, z position of the selected star
+    const x = positions[randomIndex * 3];
+    const y = positions[randomIndex * 3 + 1];
+    const z = positions[randomIndex * 3 + 2];
 
-      // Teleport the camera to the star's position
-      camera.position.set(x, y, z);
-    }
-    const otherPlayers = {};
-    const playerTexts = {};
-    const myLasers = [];
-    const playerTextContainer = document.createElement('div');
-    playerTextContainer.style.position = 'absolute';
-    playerTextContainer.style.top = '0';
-    playerTextContainer.style.left = '0';
-    document.body.appendChild(playerTextContainer);
-
-    // Listen for updates to other players
-    const playersRef = ref(db, "players");
-    // Listen for new players added
-    onChildAdded(playersRef, (snapshot) => {
-      const otherPlayerId = snapshot.key;
-      if (otherPlayerId !== playerId) {
-        const otherPlayerData = snapshot.val();
-
-        // Load the model for other players
-        loader.load('../assets/models/placeholdership.obj', (object) => {
-          const otherPlayerModel = new THREE.Group();
-          otherPlayerModel.add(object);
-          otherPlayerModel.scale.set(0.001, 0.001, 0.001);  // Scale to match size
-          otherPlayerModel.position.set(otherPlayerData.x, otherPlayerData.y, otherPlayerData.z);
-          scene.add(otherPlayerModel);
-          otherPlayers[otherPlayerId] = otherPlayerModel;
-          const playerText = document.createElement('div');
-          playerText.className = 'player-text player-text-border';
-          playerText.innerHTML = `<div class='player-label'>Player</div>${otherPlayerId}<div id='au-counter'></div>`;
-          playerText.style.position = 'absolute';
-          playerText.style.transform = 'translate(-50%, -100%)';
-          playerTextContainer.appendChild(playerText);
-          playerTexts[otherPlayerId] = playerText;
-        });
-
-      }
-    });
-
-
-
-    // Update other players' positions and rotations when Firebase data changes
-    onChildChanged(playersRef, (snapshot) => {
-      const otherPlayerId = snapshot.key;
-      if (otherPlayers[otherPlayerId]) {
-        const otherPlayerData = snapshot.val();
-        const otherPlayerModel = otherPlayers[otherPlayerId];
-
-        // Update position
-        otherPlayerModel.position.set(otherPlayerData.x, otherPlayerData.y, otherPlayerData.z);
-
-        // Update rotation
-        otherPlayerModel.rotation.set(otherPlayerData.rx, otherPlayerData.ry, otherPlayerData.rz);
-      }
-    });
-
-    // Handle player removal
-    onChildRemoved(playersRef, (snapshot) => {
-      const otherPlayerId = snapshot.key;
-      if (otherPlayers[otherPlayerId]) {
-        scene.remove(otherPlayers[otherPlayerId]);
-        const playerLabel = playerTexts[otherPlayerId];
-        if (playerLabel) {
-          playerTextContainer.removeChild(playerLabel);
-          delete playerTexts[otherPlayerId];
-        }
-        delete otherPlayers[otherPlayerId];
-      }
-    });
-
-
-    // Update player position in Firebase
-    const playerRef = ref(db, `players/${playerId}`);
-    function updatePlayerPosition() {
-      set(playerRef, {
-        x: ship.position.x,
-        y: ship.position.y,
-        z: ship.position.z,
-        rx: ship.rotation.x,
-        ry: ship.rotation.y,
-        rz: ship.rotation.z,
-      });
-    }
-    function worldToScreen(worldPosition) {
-      const vector = worldPosition.clone().project(camera);
-      const widthHalf = window.innerWidth / 2;
-      const heightHalf = window.innerHeight / 2;
-
-      vector.x = (vector.x * widthHalf) + widthHalf;
-      vector.y = - (vector.y * heightHalf) + heightHalf;
-
-      return {
-        x: vector.x,
-        y: vector.y
-      };
-    }
-    function isPlayerInView(playerPosition) {
-      // Get the camera's position and direction
-      const cameraPosition = camera.position;
-      const cameraDirection = new THREE.Vector3();
-      camera.getWorldDirection(cameraDirection); // Get the forward direction of the camera
-    
-      // Vector from the camera to the player
-      const toPlayer = new THREE.Vector3()
-        .subVectors(playerPosition, cameraPosition)
-        .normalize();
-    
-      // Angle between camera direction and direction to player
-      const angleToPlayer = cameraDirection.angleTo(toPlayer);
-    
-      // Horizontal and vertical FoV (in radians)
-      const horizontalFoV = THREE.MathUtils.degToRad(camera.fov);
-      const verticalFoV = horizontalFoV / camera.aspect;
-    
-      // Check if the player is within the camera's angular field of view
-      const isInViewAngle = angleToPlayer< horizontalFoV / 1.2;
-    
-      // Final visibility check
-      return isInViewAngle;
-    }
-    window.isPlayerInView = isPlayerInView;
-    window.worldToScreen = worldToScreen;
-    
-    
-    // Update player text position with visibility check
-    function updatePlayerTextPosition() {
-      Object.keys(otherPlayers).forEach((playerId) => {
-        const playerModel = otherPlayers[playerId];
-        const playerText = playerTexts[playerId];
-    
-        if (playerModel && playerText) {
-          const playerPosition = playerModel.position.clone();
-          const screenPosition = worldToScreen(playerPosition);
-    
-          // Check if the player is in view
-          const inView = isPlayerInView(playerPosition);
-          const distance = playerPosition.distanceTo(ship.position);
-          const distanceInAU = distance / 5000;
-    
-          // If the player is in view, update the position of the text
-          if (inView && distanceInAU < 10000) {
-            playerText.style.left = `${screenPosition.x}px`;
-            playerText.style.top = `${screenPosition.y - 10}px`;
-            playerText.style.display = 'block'; // Show the label
-            playerText.querySelector("#au-counter").textContent = `${distanceInAU.toFixed(5)} AU`;
+    // Teleport the camera to the star's position
+    camera.position.set(x, y, z);
+  }
+  function processDamage() {
+    if (!pendingDamage) {
+      const hitRef = ref(db, `hit/${playerId}`);
+      pendingDamage = true;  // Lock the damage processing
+  
+      get(hitRef).then((snapshot) => {
+        const hitData = snapshot.val();
+  
+        if (hitData && hitData.damage) {
+          const damage = hitData.damage;
+          if (shield > 0) {
+            shield = Math.max(shield - damage, 0);
+            console.log(`Player ${playerId}'s shield reduced to ${shield}`);
           } else {
-            playerText.style.display = 'none'; 
+            health = Math.max(health - damage, 0); 
+            console.log(`Player ${playerId}'s health reduced to ${health}`);
           }
+          
+
+          remove(hitRef).catch((error) => {
+            console.error("Error removing damage from Firebase: ", error);
+          });
         }
+      }).catch((error) => {
+        console.error("Error fetching damage data from Firebase: ", error);
+      }).finally(() => {
+        pendingDamage = false;
       });
     }
-    // Remove player from Firebase on disconnect
-    onDisconnect(playerRef).remove();
-    window.teleportToRandomStar = teleportToRandomStar;
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-    let solarSystem = new SolarSystem(scene);
-    let atmosphereGeometry = new THREE.SphereGeometry(9.05, 120, 120); // Slightly larger than the Earth
-    let atmosphereMaterial = new THREE.MeshBasicMaterial({
-      color: 0x87ceeb, // Light blue color
-      transparent: true,
-      opacity: 0.18, // Adjust opacity for a subtle effect
+  }
+  
+  const otherPlayers = {};
+  const playerTexts = {};
+  const myLasers = [];
+  const multiplayerLasers = [];
+  const playerTextContainer = document.createElement('div');
+  playerTextContainer.style.position = 'absolute';
+  playerTextContainer.style.top = '0';
+  playerTextContainer.style.left = '0';
+  document.body.appendChild(playerTextContainer);
+
+  // Listen for updates to other players
+  const playersRef = ref(db, "players");
+  const lasersRef = ref(db, "lasers");
+  // Listen for new players added
+  onChildAdded(playersRef, (snapshot) => {
+    const otherPlayerId = snapshot.key;
+    if (otherPlayerId !== playerId) {
+      const otherPlayerData = snapshot.val();
+
+      // Load the model for other players
+      loader.load('../assets/models/placeholdership.obj', (object) => {
+        const otherPlayerModel = new THREE.Group();
+        otherPlayerModel.add(object);
+        otherPlayerModel.scale.set(0.001, 0.001, 0.001);  // Scale to match size
+        otherPlayerModel.position.set(otherPlayerData.x, otherPlayerData.y, otherPlayerData.z);
+        scene.add(otherPlayerModel);
+        otherPlayers[otherPlayerId] = otherPlayerModel;
+        const playerText = document.createElement('div');
+        playerText.className = 'player-text player-text-border';
+        playerText.innerHTML = `<div class='player-label'>Player</div>${otherPlayerId}<div id='au-counter'></div>`;
+        playerText.style.position = 'absolute';
+        playerText.style.transform = 'translate(-50%, -100%)';
+        playerTextContainer.appendChild(playerText);
+        playerTexts[otherPlayerId] = playerText;
+      });
+
+    }
+  });
+  onChildAdded(lasersRef, (snapshot) => {
+    const laserData = snapshot.val();
+    const laserId = snapshot.key;
+    if (laserData.player !== playerId) {
+      multiplayerLasers.push(new MultiplayerLaser(scene, laserData.position, laserData.rotation, 1.5, 3, laserId));
+    }
+  });
+
+
+
+  // Update other players' positions and rotations when Firebase data changes
+  onChildChanged(playersRef, (snapshot) => {
+    const otherPlayerId = snapshot.key;
+    if (otherPlayers[otherPlayerId]) {
+      const otherPlayerData = snapshot.val();
+      const otherPlayerModel = otherPlayers[otherPlayerId];
+
+      // Update position
+      otherPlayerModel.position.set(otherPlayerData.x, otherPlayerData.y, otherPlayerData.z);
+
+      // Update rotation
+      otherPlayerModel.rotation.set(otherPlayerData.rx, otherPlayerData.ry, otherPlayerData.rz);
+    }
+  });
+
+  // Handle player removal
+  onChildRemoved(playersRef, (snapshot) => {
+    const otherPlayerId = snapshot.key;
+    if (otherPlayers[otherPlayerId]) {
+      scene.remove(otherPlayers[otherPlayerId]);
+      const playerLabel = playerTexts[otherPlayerId];
+      if (playerLabel) {
+        playerTextContainer.removeChild(playerLabel);
+        delete playerTexts[otherPlayerId];
+      }
+      delete otherPlayers[otherPlayerId];
+    }
+  });
+
+
+  // Update player position in Firebase
+  const playerRef = ref(db, `players/${playerId}`);
+  function updatePlayerPosition() {
+    set(playerRef, {
+      x: ship.position.x,
+      y: ship.position.y,
+      z: ship.position.z,
+      rx: ship.rotation.x,
+      ry: ship.rotation.y,
+      rz: ship.rotation.z,
     });
-    let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-    scene.add(atmosphere);
-    // Light setup
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
-    scene.add(ambientLight);
-    let sunGeometry = new THREE.SphereGeometry(981, 120, 120);
-    let textureLoader = new THREE.TextureLoader();
-    let sunTexture = textureLoader.load('./assets/solar-system/sun.jpg');
-    let sunMaterial = new THREE.MeshStandardMaterial({
-      map: sunTexture,
-      emissive: new THREE.Color(0xffffff), // Red emissive color
-      emissiveIntensity: 2, // Emissive strength
-      emissiveMap: sunTexture, // Optional: use the texture as an emissive map
+  }
+  function addLaser(position, rotation, id) {
+    const newLaserRef = ref(db, `lasers/${id}`);
+    set(newLaserRef, {
+      player: playerId,
+      position: [position.x, position.y, position.z],
+      rotation: [rotation.x, rotation.y, rotation.z]
     });
-    let sun = new THREE.Mesh(sunGeometry, sunMaterial);
-    sun.position.set(5000, 5, 5);
-    scene.add(sun);
+  }
+  function worldToScreen(worldPosition) {
+    const vector = worldPosition.clone().project(camera);
+    const widthHalf = window.innerWidth / 2;
+    const heightHalf = window.innerHeight / 2;
 
-    const pointLight = new THREE.PointLight(0xfff18a, 2, 200000);
-    pointLight.position.set(5000, 5, 5);
-    scene.add(pointLight);
+    vector.x = (vector.x * widthHalf) + widthHalf;
+    vector.y = - (vector.y * heightHalf) + heightHalf;
 
-    let ship;
-    loader.load('../assets/models/placeholdership.obj', (object) => {
-      ship = object;
-      ship.position.set(15, 0, 0); // Initial position
-      ship.rotation.x = 1.512;
-      ship.scale.set(0.001, 0.001, 0.001);
-      scene.add(ship);
-      markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, solarSystem.planets["earth"], ship))
+    return {
+      x: vector.x,
+      y: vector.y
+    };
+  }
+  function isPlayerInView(playerPosition) {
+    // Get the camera's position and direction
+    const cameraPosition = camera.position;
+    const cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection); // Get the forward direction of the camera
+
+    // Vector from the camera to the player
+    const toPlayer = new THREE.Vector3()
+      .subVectors(playerPosition, cameraPosition)
+      .normalize();
+
+    // Angle between camera direction and direction to player
+    const angleToPlayer = cameraDirection.angleTo(toPlayer);
+
+    // Horizontal and vertical FoV (in radians)
+    const horizontalFoV = THREE.MathUtils.degToRad(camera.fov);
+    const verticalFoV = horizontalFoV / camera.aspect;
+
+    // Check if the player is within the camera's angular field of view
+    const isInViewAngle = angleToPlayer < horizontalFoV / 1.2;
+
+    // Final visibility check
+    return isInViewAngle;
+  }
+  window.isPlayerInView = isPlayerInView;
+  window.worldToScreen = worldToScreen;
+
+
+  // Update player text position with visibility check
+  function updatePlayerTextPosition() {
+    Object.keys(otherPlayers).forEach((playerId) => {
+      const playerModel = otherPlayers[playerId];
+      const playerText = playerTexts[playerId];
+
+      if (playerModel && playerText) {
+        const playerPosition = playerModel.position.clone();
+        const screenPosition = worldToScreen(playerPosition);
+
+        // Check if the player is in view
+        const inView = isPlayerInView(playerPosition);
+        const distance = playerPosition.distanceTo(ship.position);
+        const distanceInAU = distance / 5000;
+
+        // If the player is in view, update the position of the text
+        if (inView && distanceInAU < 10000) {
+          playerText.style.left = `${screenPosition.x}px`;
+          playerText.style.top = `${screenPosition.y - 10}px`;
+          playerText.style.display = 'block'; // Show the label
+          playerText.querySelector("#au-counter").textContent = `${distanceInAU.toFixed(5)} AU`;
+        } else {
+          playerText.style.display = 'none';
+        }
+      }
     });
+  }
+  // Remove player from Firebase on disconnect
+  onDisconnect(playerRef).remove();
+  window.teleportToRandomStar = teleportToRandomStar;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+  let solarSystem = new SolarSystem(scene);
+  let atmosphereGeometry = new THREE.SphereGeometry(9.05, 120, 120); // Slightly larger than the Earth
+  let atmosphereMaterial = new THREE.MeshBasicMaterial({
+    color: 0x87ceeb, // Light blue color
+    transparent: true,
+    opacity: 0.18, // Adjust opacity for a subtle effect
+  });
+  let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+  scene.add(atmosphere);
+  // Light setup
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
+  scene.add(ambientLight);
+  let sunGeometry = new THREE.SphereGeometry(981, 120, 120);
+  let textureLoader = new THREE.TextureLoader();
+  let sunTexture = textureLoader.load('./assets/solar-system/sun.jpg');
+  let sunMaterial = new THREE.MeshStandardMaterial({
+    map: sunTexture,
+    emissive: new THREE.Color(0xffffff), // Red emissive color
+    emissiveIntensity: 2, // Emissive strength
+    emissiveMap: sunTexture, // Optional: use the texture as an emissive map
+  });
+  let sun = new THREE.Mesh(sunGeometry, sunMaterial);
+  sun.position.set(5000, 5, 5);
+  scene.add(sun);
 
-    // Movement and rotation controls
+  const pointLight = new THREE.PointLight(0xfff18a, 2, 200000);
+  pointLight.position.set(5000, 5, 5);
+  scene.add(pointLight);
+
+  let ship;
+  loader.load('../assets/models/placeholdership.obj', (object) => {
+    ship = object;
+    ship.position.set(15, 0, 0); // Initial position
+    ship.rotation.x = 1.512;
+    ship.scale.set(0.001, 0.001, 0.001);
+    scene.add(ship);
+    markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, solarSystem.planets["earth"], ship))
+  });
+
+  // Movement and rotation controls
 
 
-    // Add a bloom effect for the warp glow
-    const bloomPass = new THREE.UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
-      1.5,
-      0.4,
-      0.85
-    );
-    composer.addPass(bloomPass);
+  // Add a bloom effect for the warp glow
+  const bloomPass = new THREE.UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5,
+    0.4,
+    0.85
+  );
+  composer.addPass(bloomPass);
 
-    // Warp Shader (for radial blur)
-    const warpShader = {
-      uniforms: {
-        tDiffuse: { value: null },
-        strength: { value: 0.0 }, // Strength of the warp blur
-      },
-      vertexShader: `
+  // Warp Shader (for radial blur)
+  const warpShader = {
+    uniforms: {
+      tDiffuse: { value: null },
+      strength: { value: 0.0 }, // Strength of the warp blur
+    },
+    vertexShader: `
       varying vec2 vUv;
       void main() {
         vUv = uv;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
-      fragmentShader: `
+    fragmentShader: `
       uniform sampler2D tDiffuse;
       uniform float strength;
       varying vec2 vUv;
@@ -440,24 +492,24 @@ function init(username) {
         gl_FragColor = texture2D(tDiffuse, coord + 0.5);
       }
     `,
-    };
-    const warpPass = new THREE.ShaderPass(warpShader);
-    let markers = [];
-    composer.addPass(warpPass);
-    // Blue filter shader
-    const blueFilterShader = {
-      uniforms: {
-        tDiffuse: { value: null },
-        blueIntensity: { value: 0.3 },
-      },
-      vertexShader: `
+  };
+  const warpPass = new THREE.ShaderPass(warpShader);
+  let markers = [];
+  composer.addPass(warpPass);
+  // Blue filter shader
+  const blueFilterShader = {
+    uniforms: {
+      tDiffuse: { value: null },
+      blueIntensity: { value: 0.3 },
+    },
+    vertexShader: `
         varying vec2 vUv;
         void main() {
           vUv = uv;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
-      fragmentShader: `
+    fragmentShader: `
         uniform sampler2D tDiffuse;
         uniform float blueIntensity;
         varying vec2 vUv;
@@ -470,292 +522,358 @@ function init(username) {
           gl_FragColor = color;
         }
       `,
-    };
+  };
 
-    const blueFilterPass = new THREE.ShaderPass(blueFilterShader);
-    composer.addPass(blueFilterPass);
-    let fireZoom = false;
-    document.addEventListener('keydown', (event) => {
-      switch (event.key.toLowerCase()) {
-        case 'w':
-          movement.forward = true;
-          break;
-        case 's':
-          movement.backward = true;
-          break;
-        case 'a':
-          movement.left = true;
-          break;
-        case 'd':
-          movement.right = true;
-          break;
-        case ' ':
-          movement.up = true;
-          break;
-        case 'Shift':
-          movement.down = true;
-          break;
-        case 'p':
-          window.speed = prompt("Enter new speed:", window.speed);
-          break;
-        case 'z':
-          fireZoom = true;
-          break;
-      }
-      if (event.key.toLowerCase() === "f" && !warpActive) {
-        // Press 'w' to trigger warp
-        warpActive = true;
-        fovTarget = maxFov;
-        warpPass.uniforms.strength.value = 7; // Activate blur
-        toggleWarpEffect();
-      }
-    });
-
-    document.addEventListener('keyup', (event) => {
-      switch (event.key.toLowerCase()) {
-        case 'w':
-          movement.forward = false;
-          break;
-        case 's':
-          movement.backward = false;
-          break;
-        case 'a':
-          movement.left = false;
-          break;
-        case 'd':
-          movement.right = false;
-          break;
-        case ' ':
-          movement.up = false;
-          break;
-        case 'Shift':
-          movement.down = false;
-          break;
-        case 'z':
-          fireZoom = false;
-          break;
-      }
-      if (event.key.toLowerCase() === "f" && warpActive) {
-        // Release 'w' to deactivate warp
-        warpActive = false;
-        fovTarget = 75;
-        warpPass.uniforms.strength.value = 0.0; // Deactivate blur
-        toggleWarpEffect();
-      }
-    });
-    function toggleWarpEffect() {
-      if (warpActive) {
-        blueFilterPass.enabled = true; // Enable blue filter when warp is active
-      } else {
-        blueFilterPass.enabled = false; // Disable blue filter when warp is not active
-      }
-    }
-    // Pointer lock setup
-    const canvas = renderer.domElement;
-    canvas.addEventListener('click', () => {
-      canvas.requestPointerLock();
-    });
-    let isMouseDown = false;
-    let cameraRotation = {x: 0, y: 0};
-    document.addEventListener('mousedown', (event) => {
-      if (event.button === 2) {
-        isMouseDown = true;
-        cameraRotation = {x: 0, y: 0};
-        document.getElementById("aim-cursor").style.display = "block";
-      } else if (event.button === 0) {
-        if (isMouseDown) {
-          const laserQuaternion = camera.quaternion.clone();
-          myLasers.push(new Laser(
-            scene,
-            ship.position, 
-            laserQuaternion, 
-            1.5, 
-            3
-          ))
+  const blueFilterPass = new THREE.ShaderPass(blueFilterShader);
+  composer.addPass(blueFilterPass);
+  let fireZoom = false;
+  document.addEventListener('keydown', (event) => {
+    switch (event.key.toLowerCase()) {
+      case 'w':
+        movement.forward = true;
+        break;
+      case 's':
+        movement.backward = true;
+        break;
+      case 'a':
+        movement.left = true;
+        break;
+      case 'd':
+        movement.right = true;
+        break;
+      case 'r':
+        if (!isMouseDown) {
+          isMouseDown = true;
+          cameraRotation = { x: 0, y: 0 };
+          document.getElementById("aim-cursor").style.display = "block";
         }
-      } 
-      console.log('Mouse button pressed down!');
-    });
+        break;
+      case ' ':
+        movement.up = true;
+        break;
+      case 'shift':
+        movement.down = true;
+        break;
+      case 'z':
+        fireZoom = true;
+        break;
+    }
+    if (event.key.toLowerCase() === "f" && !warpActive) {
+      // Press 'w' to trigger warp
+      warpActive = true;
+      fovTarget = maxFov;
+      warpPass.uniforms.strength.value = 7; // Activate blur
+      toggleWarpEffect();
+    }
+  });
 
-    document.addEventListener('mouseup', (event) => {
-      if (event.button === 2) {
+  document.addEventListener('keyup', (event) => {
+    switch (event.key.toLowerCase()) {
+      case 'w':
+        movement.forward = false;
+        break;
+      case 's':
+        movement.backward = false;
+        break;
+      case 'a':
+        movement.left = false;
+        break;
+      case 'd':
+        movement.right = false;
+        break;
+      case 'r':
         isMouseDown = false;
         document.getElementById("aim-cursor").style.display = "none";
-      }
-      console.log('Mouse button released!');
-    });
-    document.addEventListener('pointerlockchange', () => {
-      if (document.pointerLockElement === canvas) {
-        console.log('Pointer locked');
-      } else {
-        console.log('Pointer unlocked');
-      }
-    });
-
-    document.addEventListener('mousemove', (event) => {
-      if (document.pointerLockElement === canvas) {
-        if (isMouseDown) {
-          // Adjust camera rotation based on mouse movement
-          cameraRotation.x -= event.movementY * 0.005;
-          cameraRotation.y -= event.movementX * 0.005;
-          cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotation.x));
-        }
-      }
-    });
-
-    window.speed = 0.003; // Default speed
-    const cameraOffset = new THREE.Vector3(0, 0.03, 0.1); // Offset from the player
-
-    function interpolate(current, target, factor) {
-      if (!((current + (target - current) * factor < 0.01) && (current + (target - current) * factor > 0))) {
-        updatePlayerPosition();
-        return current + (target - current) * factor;
-      } else {
-        return 0;
+      case ' ':
+        movement.up = false;
+        break;
+      case 'shift':
+        movement.down = false;
+        break;
+      case 'z':
+        fireZoom = false;
+        break;
+    }
+    if (event.key.toLowerCase() === "f" && warpActive) {
+      // Release 'w' to deactivate warp
+      warpActive = false;
+      fovTarget = 75;
+      warpPass.uniforms.strength.value = 0.0; // Deactivate blur
+      toggleWarpEffect();
+    }
+  });
+  function toggleWarpEffect() {
+    if (warpActive) {
+      blueFilterPass.enabled = true; // Enable blue filter when warp is active
+    } else {
+      blueFilterPass.enabled = false; // Disable blue filter when warp is not active
+    }
+  }
+  // Pointer lock setup
+  const canvas = renderer.domElement;
+  canvas.addEventListener('click', () => {
+    canvas.requestPointerLock();
+  });
+  let isMouseDown = false;
+  let cameraRotation = { x: 0, y: 0 };
+  document.addEventListener('mousedown', (event) => {
+    if (event.button === 2) {
+      isMouseDown = true;
+      cameraRotation = { x: 0, y: 0 };
+      document.getElementById("aim-cursor").style.display = "block";
+    } else if (event.button === 0) {
+      if (isMouseDown) {
+        const laserQuaternion = camera.quaternion.clone();
+        const id = Math.floor(Math.random() * 100000000);
+        myLasers.push(new Laser(
+          scene,
+          ship.position,
+          laserQuaternion,
+          1.5,
+          3,
+          id,
+          otherPlayers,
+          db
+        ));
+        addLaser(ship.position, camera.rotation, id);
       }
     }
+    console.log('Mouse button pressed down!');
+  });
 
-    // Target rotations for smooth interpolation
+  document.addEventListener('mouseup', (event) => {
+    if (event.button === 2) {
+      isMouseDown = false;
+      document.getElementById("aim-cursor").style.display = "none";
+    }
+    console.log('Mouse button released!');
+  });
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement === canvas) {
+      console.log('Pointer locked');
+    } else {
+      console.log('Pointer unlocked');
+    }
+  });
 
-    // Animation loop
-    function animate() {
-      requestAnimationFrame(animate);
-      let warpMovement = false;
-      solarSystem.update();
-      fovTarget = 75;
-      if (warpActive) {
-        fovTarget = maxFov;
-        warpMovement = true;
-        const targetSpeed = warpMode || 1;
-        const progress = Math.min(speed / targetSpeed, 1); 
-      
-        // Using a sinusoidal ease-in/out to smooth the transition
-        const smoothFactor = Math.sin(progress * Math.PI / 2); // Sinusoidal ease-in
-        const transitionSpeed = (targetSpeed - speed) * smoothFactor;
-      
-        // Multiply the transition speed to make more granular speed changes
-        const speedChange = transitionSpeed * 0.05; // Lower this value to make the transition slower (more steps)
-        
-        speed += speedChange;
-        speed = Math.min(speed, targetSpeed);
-      
-        console.log(speed);
-      } else {
-        if (speed > (impulseMode + 0.01)) {
+  document.addEventListener('mousemove', (event) => {
+    if (document.pointerLockElement === canvas) {
+      if (isMouseDown) {
+        // Adjust camera rotation based on mouse movement
+        cameraRotation.x -= event.movementY * 0.005;
+        cameraRotation.y -= event.movementX * 0.005;
+        cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotation.x));
+      }
+    }
+  });
+
+  window.speed = 0.003; // Default speed
+  const cameraOffset = new THREE.Vector3(0, 0.03, 0.1); // Offset from the player
+
+  function interpolate(current, target, factor, threshold = 0.01) {
+    const interpolated = current + (target - current) * factor;
+    if (Math.abs(target - current) > threshold) {
+      updatePlayerPosition(); 
+    }
+    return interpolated;
+  }
+  
+
+  let lastUpdateTime = 0;
+  const updateInterval = 100; // milliseconds
+
+  function updatePlayerPositionThrottled() {
+    const now = performance.now();
+    if (now - lastUpdateTime > updateInterval) {
+      lastUpdateTime = now;
+      updatePlayerPosition(); // Send data to Firebase
+      console.log("data sent");
+    }
+  }
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+    let warpMovement = false;
+    solarSystem.update();
+    fovTarget = 75;
+    if (warpActive) {
+      fovTarget = maxFov;
+      warpMovement = true;
+      const targetSpeed = warpMode || 1;
+      const progress = Math.min(speed / targetSpeed, 1);
+
+      // Using a sinusoidal ease-in/out to smooth the transition
+      const smoothFactor = Math.sin(progress * Math.PI / 2); // Sinusoidal ease-in
+      const transitionSpeed = (targetSpeed - speed) * smoothFactor;
+
+      // Multiply the transition speed to make more granular speed changes
+      const speedChange = transitionSpeed * 0.05; // Lower this value to make the transition slower (more steps)
+
+      speed += speedChange;
+      speed = Math.min(speed, targetSpeed);
+
+      console.log(speed);
+    } else {
+      if (speed > (impulseMode + 0.01)) {
         warpMovement = true;
         const targetMinSpeed = impulseMode;
-        const progress = Math.min((speed - impulseMode) / (speed - targetMinSpeed), 1); 
+        const progress = Math.min((speed - impulseMode) / (speed - targetMinSpeed), 1);
         const smoothFactor = Math.sin(progress * Math.PI / 2);
         const transitionSpeed = (targetMinSpeed - speed) * smoothFactor;
-        const speedChange = transitionSpeed * 0.03; 
+        const speedChange = transitionSpeed * 0.03;
         speed += speedChange;
-        speed = Math.max(speed, targetMinSpeed); 
+        speed = Math.max(speed, targetMinSpeed);
 
         console.log(speed);
-        } else {
-          speed = impulseMode;
-        }
+      } else {
+        speed = impulseMode;
       }
-      
-      
-      if (ship) {
-        // Update ship position with interpolation
-        
-        if (movement.forward || warpMovement == true) {
-          ship.position.z -= Math.cos(ship.rotation.y) * window.speed;
-          ship.position.x -= Math.sin(ship.rotation.y) * window.speed;
-        }
-        if (movement.backward) {
-          ship.position.z += Math.cos(ship.rotation.y) * window.speed;
-          ship.position.x += Math.sin(ship.rotation.y) * window.speed;
-        }
-        if (movement.left) {
-          rotationTarget.z = 0.5; // Target a banking rotation to the left
-          rotationTarget.y += 0.02; // Slight yaw to the left
-        } else if (movement.right) {
-          rotationTarget.z = -0.5; // Target a banking rotation to the right
-          rotationTarget.y -= 0.02; // Slight yaw to the right
-        } else {
-          rotationTarget.z = 0; // Reset banking if no left/right movement
-        }
-        if (movement.up) {
-          rotationTarget.x = Math.max(rotationTarget.x - 0.02, -0.5); // Pitch up (limit to avoid excessive rotation)
-          ship.position.y += window.speed;
-        } else if (movement.down) {
-          rotationTarget.x = Math.min(rotationTarget.x + 0.02, 0.5); // Pitch down (limit to avoid excessive rotation)
-          ship.position.y -= window.speed;
-        } else {
-          rotationTarget.x = 0; // Reset pitch if no up/down movement
-        }
-
-        // Smoothly interpolate ship rotation
-        ship.rotation.x = interpolate(ship.rotation.x, rotationTarget.x, 0.1); // Pitch
-        ship.rotation.y = interpolate(ship.rotation.y, rotationTarget.y, 0.1); // Yaw
-        ship.rotation.z = interpolate(ship.rotation.z, rotationTarget.z, 0.1); // Bank (Roll)
-
-        if (!isMouseDown) {
-          const offsetPosition = new THREE.Vector3().copy(cameraOffset).applyQuaternion(ship.quaternion);
-          camera.position.copy(ship.position).add(offsetPosition);
-          camera.lookAt(ship.position);
-          camera.fov += (fovTarget - camera.fov) * fovSpeed;
-        } else {
-          let cannonOffset = new THREE.Vector3(0, 0.01, 0);
-          const offsetPosition = new THREE.Vector3().copy(cannonOffset).applyQuaternion(ship.quaternion);
-          camera.position.copy(ship.position).add(offsetPosition);
-          const direction = new THREE.Vector3(
-            Math.cos(cameraRotation.x) * Math.sin(cameraRotation.y),
-            Math.sin(cameraRotation.x), 
-            Math.cos(cameraRotation.x) * Math.cos(cameraRotation.y)
-          );
-      
-          // Update camera's look direction
-          const lookAtPosition = new THREE.Vector3().copy(ship.position).add(direction);
-          camera.lookAt(lookAtPosition);
-          if (fireZoom) {
-            fovTarget = 25;
-          } else {
-            fovTarget = 75;
-          }
-          camera.fov += (fovTarget - camera.fov) * 0.5;
-        }
-
-        // Lock the camera's rotation to look at the ship
-        if (Object.values(movement).some(value => value)) {
-          updatePlayerPosition();
-        }
-        const deltaTime = clock.getDelta();
-        markers.forEach((element) => {element.update()});
-        for (let i = myLasers.length - 1; i >= 0; i--) {
-          const isActive = myLasers[i].update(deltaTime);
-          if (!isActive) {
-            myLasers.splice(i, 1); // Remove inactive lasers
-          }
-        }
-        updatePlayerTextPosition();
-      }
-
-      // Call other necessary updates
-      checkStars();
-      camera.updateProjectionMatrix();
-      composer.render();
-
-      // Render the scene
-      renderer.render(scene, camera);
     }
 
-    animate();
+
+    if (ship) {
+      // Update ship position with interpolation
+
+      if (movement.forward || warpMovement == true) {
+        ship.position.z -= Math.cos(ship.rotation.y) * window.speed;
+        ship.position.x -= Math.sin(ship.rotation.y) * window.speed;
+      }
+      if (movement.backward) {
+        ship.position.z += Math.cos(ship.rotation.y) * window.speed;
+        ship.position.x += Math.sin(ship.rotation.y) * window.speed;
+      }
+      if (movement.left) {
+        rotationTarget.z = 0.5; // Target a banking rotation to the left
+        rotationTarget.y += 0.02; // Slight yaw to the left
+      } else if (movement.right) {
+        rotationTarget.z = -0.5; // Target a banking rotation to the right
+        rotationTarget.y -= 0.02; // Slight yaw to the right
+      } else {
+        rotationTarget.z = 0; // Reset banking if no left/right movement
+      }
+      if (movement.up) {
+        rotationTarget.x = Math.max(rotationTarget.x - 0.02, -0.5); // Pitch up (limit to avoid excessive rotation)
+        ship.position.y += window.speed;
+      } else if (movement.down) {
+        rotationTarget.x = Math.min(rotationTarget.x + 0.02, 0.5); // Pitch down (limit to avoid excessive rotation)
+        ship.position.y -= window.speed;
+      } else {
+        rotationTarget.x = 0; // Reset pitch if no up/down movement
+      }
+
+      // Smoothly interpolate ship rotation
+      ship.rotation.x = interpolate(ship.rotation.x, rotationTarget.x, 0.1); // Pitch
+      ship.rotation.y = interpolate(ship.rotation.y, rotationTarget.y, 0.1); // Yaw
+      ship.rotation.z = interpolate(ship.rotation.z, rotationTarget.z, 0.1); // Bank (Roll)
+
+      if (!isMouseDown) {
+        const offsetPosition = new THREE.Vector3().copy(cameraOffset).applyQuaternion(ship.quaternion);
+        camera.position.copy(ship.position).add(offsetPosition);
+        camera.lookAt(ship.position);
+        camera.fov += (fovTarget - camera.fov) * fovSpeed;
+      } else {
+        let cannonOffset = new THREE.Vector3(0, 0.01, 0);
+        const offsetPosition = new THREE.Vector3().copy(cannonOffset).applyQuaternion(ship.quaternion);
+        camera.position.copy(ship.position).add(offsetPosition);
+        const direction = new THREE.Vector3(
+          Math.cos(cameraRotation.x) * Math.sin(cameraRotation.y),
+          Math.sin(cameraRotation.x),
+          Math.cos(cameraRotation.x) * Math.cos(cameraRotation.y)
+        );
+
+        // Update camera's look direction
+        const lookAtPosition = new THREE.Vector3().copy(ship.position).add(direction);
+        camera.lookAt(lookAtPosition);
+        if (fireZoom) {
+          fovTarget = 20;
+        } else {
+          fovTarget = 75;
+        }
+        camera.fov += (fovTarget - camera.fov) * 0.5;
+      }
+
+      // Lock the camera's rotation to look at the ship
+      if (Object.values(movement).some(value => value)) {
+        updatePlayerPositionThrottled();
+      }
+      const deltaTime = clock.getDelta();
+      markers.forEach((element) => { element.update() });
+      for (let i = myLasers.length - 1; i >= 0; i--) {
+        const isActive = myLasers[i].update(deltaTime);
+        if (!isActive) {
+          const removeLaserRef = ref(db, `lasers/${myLasers[i].id}`);
+          get(removeLaserRef).then((snapshot) => {
+            const laserData = snapshot.val();
+            if (laserData && laserData.player == playerId) {
+              remove(removeLaserRef).then(() => {
+                console.log(`Laser with ID ${myLasers[i].id} removed from Firebase`);
+              }).catch((error) => {
+                console.error("Error removing laser from Firebase: ", error);
+              });
+            }
+          }).catch((error) => {
+            console.error("Error fetching laser data from Firebase: ", error);
+          });
+      
+          myLasers.splice(i, 1);
+        }
+      }
+      for (let i = multiplayerLasers.length - 1; i >= 0; i--) {
+        const isActive = multiplayerLasers[i].update(deltaTime);
+        if (!isActive) {
+          const removeLaserRef = ref(db, `lasers/${multiplayerLasers[i].id}`);
+          get(removeLaserRef).then((snapshot) => {
+            const laserData = snapshot.val();
+            if (laserData && laserData.player == playerId) {
+              removeLaserRef.remove().then(() => {
+                console.log(`Laser with ID ${multiplayerLasers[i].id} removed from Firebase`);
+              }).catch((error) => {
+                console.error("Error removing laser from Firebase: ", error);
+              });
+            }
+          }).catch((error) => {
+            console.error("Error fetching laser data from Firebase: ", error);
+          });
+          multiplayerLasers.splice(i, 1);
+        }
+      }
+      
+      }
+      processDamage();
+      document.getElementById("health-bar").style.width = (health / 200) * 100 + "%";
+      document.getElementById("shield-bar").style.width = shield + "%";
+      if (health == 0) {
+        ship.position.x = 15;
+        ship.position.y = 0;
+        ship.position.z = 0;
+        health = 200;
+        shield = 100;
+        updatePlayerPosition();
+      }
+      updatePlayerTextPosition();
+
+    // Call other necessary updates
+    checkStars();
+    camera.updateProjectionMatrix();
+    composer.render();
+
+    // Render the scene
+    renderer.render(scene, camera);
+  }
+
+  animate();
 
 
 
 
-    // Handle window resizing
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      updatePlayerPosition();
+  // Handle window resizing
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    updatePlayerPosition();
 
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
 }
 async function getUsername(uid) {
   try {
@@ -863,9 +981,9 @@ document.getElementById('google-login').addEventListener('click', async () => {
       const username = prompt('Choose a username:');
       await setDoc(userRef, { username, email: user.email });
     }
-    const username = await getUsername(user.uid); 
+    const username = await getUsername(user.uid);
     document.getElementById("container").style.display = "none";
-    init(username); 
+    init(username);
     console.log("I came from google login")
 
   } catch (error) {
