@@ -627,7 +627,7 @@ function init(username) {
         const id = Math.floor(Math.random() * 100000000);
         myLasers.push(new Laser(
           scene,
-          ship.position,
+          camera.position.clone().add( new THREE.Vector3(0, -0.001, 0)),
           laserQuaternion,
           1.5,
           3,
@@ -635,7 +635,7 @@ function init(username) {
           otherPlayers,
           db
         ));
-        addLaser(ship.position, camera.rotation, id);
+        addLaser(camera.position, camera.rotation, id);
       }
     }
     console.log('Mouse button pressed down!');
