@@ -8,6 +8,7 @@ import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/fireb
 import { SolarSystem } from './solar-system.js';
 import { Marker, MarkerType } from './marker.js';
 import { Laser, MultiplayerLaser } from './laser.js';
+import { Star, StarType } from './star.js';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://google.com/docs/web/setup#available-libraries
 
@@ -75,7 +76,7 @@ function init(username) {
   const starSpheres = []; // Array to keep track of spheres near stars
 
   const maxRadius = 5000000000; // Maximum radius of the starfield
-  const thresholdDistance = 120000;
+  const thresholdDistance = 300000;
   const movement = {
     forward: false,
     backward: false,
@@ -138,11 +139,11 @@ function init(username) {
     }
   });
 
-  const seed = 70773; // Your seed value (use the same value for consistent results)
+  const seed = 90732; // Your seed value (use the same value for consistent results)
   const random = seededRandom(seed); // Create a random function with the seed
 
   for (let i = 0; i < starCount; i++) {
-    const r = random() * maxRadius; // Random radius within the sphere
+    const r = (random() * maxRadius) + 400000;
     const theta = random() * Math.PI * 2; // Random angle
     const phi = Math.acos(2 * random() - 1); // Random angle for sphere distribution
 
@@ -167,38 +168,32 @@ function init(username) {
   // Function to check proximity to stars and render spheres
   function checkStars() {
     const positions = starGeometry.attributes.position.array;
-
+  
     for (let i = 0; i < starCount; i++) {
       const x = positions[i * 3];
       const y = positions[i * 3 + 1];
       const z = positions[i * 3 + 2];
-
+  
       const starPosition = new THREE.Vector3(x, y, z);
       const distance = camera.position.distanceTo(starPosition);
 
-      // If the camera is within the threshold distance, create a sphere
       if (distance < thresholdDistance) {
         if (!starSpheres[i]) {
-          const sphereGeometry = new THREE.SphereGeometry(Math.random() * 500, 16, 16); // Small spheres
-          const sphereMaterial = new THREE.MeshStandardMaterial({
-            emissive: new THREE.Color(0xffffff), // Glow effect
-            emissiveIntensity: 1, // Constant glow
-            color: 0xffffff,
-          });
-          const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-          sphere.position.set(x, y, z);
-          scene.add(sphere);
-          starSpheres[i] = sphere; // Store the sphere for future checks
+          const star = new Star(x, y, z, scene);
+          starSpheres[i] = star; 
         }
       } else {
-        // If star is out of range and a sphere exists, remove it
         if (starSpheres[i]) {
-          scene.remove(starSpheres[i]);
+          scene.remove(starSpheres[i].mesh);
+          scene.remove(starSpheres[i].light);
           starSpheres[i] = null;
         }
       }
     }
   }
+  
+
+
   let pendingDamage = false;
   function teleportToRandomStar() {
     // Get all star positions from the geometry
@@ -213,26 +208,26 @@ function init(username) {
     const z = positions[randomIndex * 3 + 2];
 
     // Teleport the camera to the star's position
-    camera.position.set(x, y, z);
+    ship.position.set(x, y, z);
   }
   function processDamage() {
     if (!pendingDamage) {
       const hitRef = ref(db, `hit/${playerId}`);
       pendingDamage = true;  // Lock the damage processing
-  
+
       get(hitRef).then((snapshot) => {
         const hitData = snapshot.val();
-  
+
         if (hitData && hitData.damage) {
           const damage = hitData.damage;
           if (shield > 0) {
             shield = Math.max(shield - damage, 0);
             console.log(`Player ${playerId}'s shield reduced to ${shield}`);
           } else {
-            health = Math.max(health - damage, 0); 
+            health = Math.max(health - damage, 0);
             console.log(`Player ${playerId}'s health reduced to ${health}`);
           }
-          
+
 
           remove(hitRef).catch((error) => {
             console.error("Error removing damage from Firebase: ", error);
@@ -245,7 +240,7 @@ function init(username) {
       });
     }
   }
-  
+
   const otherPlayers = {};
   const playerTexts = {};
   const myLasers = [];
@@ -627,7 +622,7 @@ function init(username) {
         const id = Math.floor(Math.random() * 100000000);
         myLasers.push(new Laser(
           scene,
-          camera.position.clone().add( new THREE.Vector3(0, -0.001, 0)),
+          camera.position.clone().add(new THREE.Vector3(0, -0.001, 0)),
           laserQuaternion,
           1.5,
           3,
@@ -673,11 +668,11 @@ function init(username) {
   function interpolate(current, target, factor, threshold = 0.01) {
     const interpolated = current + (target - current) * factor;
     if (Math.abs(target - current) > threshold) {
-      updatePlayerPosition(); 
+      updatePlayerPosition();
     }
     return interpolated;
   }
-  
+
 
   let lastUpdateTime = 0;
   const updateInterval = 100; // milliseconds
@@ -814,7 +809,7 @@ function init(username) {
           }).catch((error) => {
             console.error("Error fetching laser data from Firebase: ", error);
           });
-      
+
           myLasers.splice(i, 1);
         }
       }
@@ -837,20 +832,20 @@ function init(username) {
           multiplayerLasers.splice(i, 1);
         }
       }
-      
-      }
-      processDamage();
-      document.getElementById("health-bar").style.width = (health / 200) * 100 + "%";
-      document.getElementById("shield-bar").style.width = shield + "%";
-      if (health == 0) {
-        ship.position.x = 15;
-        ship.position.y = 0;
-        ship.position.z = 0;
-        health = 200;
-        shield = 100;
-        updatePlayerPosition();
-      }
-      updatePlayerTextPosition();
+
+    }
+    processDamage();
+    document.getElementById("health-bar").style.width = (health / 200) * 100 + "%";
+    document.getElementById("shield-bar").style.width = shield + "%";
+    if (health == 0) {
+      ship.position.x = 15;
+      ship.position.y = 0;
+      ship.position.z = 0;
+      health = 200;
+      shield = 100;
+      updatePlayerPosition();
+    }
+    updatePlayerTextPosition();
 
     // Call other necessary updates
     checkStars();
