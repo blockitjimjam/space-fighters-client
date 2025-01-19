@@ -57,6 +57,12 @@ body {
   width: 100%;
   text-transform: uppercase;
 }
+.starsystem-label {
+  background-color: #470094;
+  color: #000;
+  width: 100%;
+  text-transform: uppercase;
+}
 #container {
   width: 100%;
   max-width: 400px;

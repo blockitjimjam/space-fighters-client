@@ -10,6 +10,7 @@ import { Marker, MarkerType } from './marker.js';
 import { Laser, MultiplayerLaser } from './laser.js';
 import { Star, StarType } from './star.js';
 import { Planet } from './planet.js';
+import { StarSystem } from './starsystem.js';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://google.com/docs/web/setup#available-libraries
 
@@ -25,6 +26,9 @@ const firebaseConfig = {
   appId: '1:976259904575:web:ee4134d8c59678dcfb348a',
   measurementId: 'G-EHXHPP69MJ',
 };
+export function hash(x, y, z) {
+  return Math.abs((Math.sin(x * 12.9898 + y * 78.233 + z * 45.164) * 43758.5453) % 1);
+}
 
 
 // Initialize Firebase
@@ -180,13 +184,13 @@ function init(username) {
 
       if (distance < thresholdDistance) {
         if (!starSpheres[i]) {
-          const star = new Star(x, y, z, scene);
-          starSpheres[i] = star; 
+          const starSystem = new StarSystem(x, y, z, scene, playerTextContainer, ship);
+          markers.push(starSystem.marker);
+          starSpheres[i] = starSystem;
         }
       } else {
         if (starSpheres[i]) {
-          scene.remove(starSpheres[i].mesh);
-          scene.remove(starSpheres[i].light);
+          starSpheres[i].remove();
           starSpheres[i] = null;
         }
       }
@@ -484,7 +488,7 @@ function init(username) {
     ship.rotation.x = 1.512;
     ship.scale.set(0.001, 0.001, 0.001);
     scene.add(ship);
-    markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, solarSystem.planets["earth"], ship))
+    markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, solarSystem.planets["earth"], ship, 1000000))
   });
 
   // Movement and rotation controls
@@ -493,7 +497,7 @@ function init(username) {
   // Add a bloom effect for the warp glow
   const bloomPass = new THREE.UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    3,
+    2,
     1,
     0.95
   );
@@ -745,7 +749,7 @@ composer.addPass(bloomPass);
       speed += speedChange;
       speed = Math.min(speed, targetSpeed);
 
-      console.log(speed);
+
     } else {
       if (speed > (impulseMode + 0.01)) {
         warpMovement = true;
@@ -757,7 +761,6 @@ composer.addPass(bloomPass);
         speed += speedChange;
         speed = Math.max(speed, targetMinSpeed);
 
-        console.log(speed);
       } else {
         speed = impulseMode;
       }
@@ -818,7 +821,7 @@ composer.addPass(bloomPass);
         const lookAtPosition = new THREE.Vector3().copy(ship.position).add(direction);
         camera.lookAt(lookAtPosition);
         if (fireZoom) {
-          fovTarget = 20;
+          fovTarget = 3;
         } else {
           fovTarget = 75;
         }

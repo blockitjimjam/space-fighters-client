@@ -1,4 +1,5 @@
 import { createNoise2D } from 'https://cdn.skypack.dev/simplex-noise@4.0.3';
+import { hash } from './app.js';
 export class PlanetType {
     static Habitable = new PlanetType("Habitable");
     static RockyAtmosphere = new PlanetType("RockyAtmosphere");
@@ -16,7 +17,7 @@ export class PlanetType {
   
   export class Planet {
     constructor(x, y, z, scene) {
-      this.size = this.getSize(); // Determine size based on type
+      this.size = this.calculateSize(x, y, z); // Determine size based on type
       this.type = this.determineType(this.size); // Planet type
       this.texture = this.generateTexture(this.type, this.size); // Dynamically generated texture
       this.geometry = new THREE.SphereGeometry(this.size, 64, 64); // Planet geometry
@@ -27,8 +28,7 @@ export class PlanetType {
       });
       this.mesh = new THREE.Mesh(this.geometry, this.material);
       this.mesh.position.set(x, y, z);
-      scene.add(this.mesh); // Add planet to scene
-      this.logDetails(x, y, z);
+      scene.add(this.mesh); // Add planet to scenes
     }
   
     // Determine the type of the planet based on size
@@ -40,8 +40,9 @@ export class PlanetType {
     }
   
     // Generate planet size based on type
-    getSize() {
-      return Math.random() * 50 + 1; // Random size range from 1,000 to 21,000
+    calculateSize(x, y, z) {
+        const noise = hash(x, y, z);
+        return noise * 50; // Scale the size (adjust 3000 as needed)
     }
   
     // Generate texture dynamically based on planet type

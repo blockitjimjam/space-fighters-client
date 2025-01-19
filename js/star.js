@@ -1,3 +1,4 @@
+import { hash } from './app.js';
 export class StarType {
     static Neutron = new StarType("Neutron");
     static WhiteDwarf = new StarType("WhiteDwarf");
@@ -17,7 +18,7 @@ export class StarType {
 export class Star {
     static BLOOM_LAYER = 1;
     constructor(x, y, z, scene) {
-        this.size = Math.random() * 3000; // Randomized size
+        this.size = this.calculateSize(x, y, z);
         this.type = this.determineType(this.size); // Star type based on size
         this.texturePath = this.getTexturePath(this.type); // Texture path based on type
         this.geometry = new THREE.SphereGeometry(this.size, 120, 120); // Star geometry
@@ -25,7 +26,7 @@ export class Star {
         this.material = new THREE.MeshStandardMaterial({
             map: this.texture,
             emissive: new THREE.Color(this.getLight()[2]),
-            emissiveIntensity: 8, // Brightness
+            emissiveIntensity: 15, // Brightness
             emissiveMap: this.texture,
         });
         this.lighting = this.getLight(this.type);
@@ -36,7 +37,6 @@ export class Star {
         this.mesh.layers.set(this.BLOOM_LAYER);
         scene.add(this.mesh); // Add star to scene
         scene.add(this.light);
-        this.logDetails(x, y, z); // Log star details
     }
 
     // Determine the type of the star based on size
@@ -70,20 +70,24 @@ export class Star {
     getLight(type) {
         switch (type) {
             case StarType.Neutron:
-                return [1.5, 1000, 0x19fbff];
+                return [1.5, 10000, 0xadfbff];
             case StarType.RedDwarf:
             case StarType.WhiteDwarf:
-                return [4, 25000, 0xff3421];
+                return [1.5, 25000, 0xfaebeb];
             case StarType.GType:
-                return [8, 145000, 0xffe675];
+                return [1.5, 145000, 0xffe675];
             case StarType.SubGiant:
             case StarType.Giant:
-                return [15, 300000, 0xffea00];
+                return [1.5, 300000, 0xffea00];
             case StarType.SuperGiant:
-                return [45, 1000000, 0xffea00];
+                return [1.5, 1000000, 0xffea00];
             default:
                 return 1.0;
         }
+    }
+    calculateSize(x, y, z) {
+        const noise = hash(x, y, z);
+        return noise * 3000; 
     }
 
     // Get the emissive intensity based on star type
