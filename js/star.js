@@ -15,6 +15,7 @@ export class StarType {
     }
 }
 export class Star {
+    static BLOOM_LAYER = 1;
     constructor(x, y, z, scene) {
         this.size = Math.random() * 3000; // Randomized size
         this.type = this.determineType(this.size); // Star type based on size
@@ -23,8 +24,8 @@ export class Star {
         this.texture = new THREE.TextureLoader().load(this.texturePath); // Load star texture
         this.material = new THREE.MeshStandardMaterial({
             map: this.texture,
-            emissive: new THREE.Color(0xffffff),
-            emissiveIntensity: this.getEmissiveIntensity(this.type), // Brightness
+            emissive: new THREE.Color(this.getLight()[2]),
+            emissiveIntensity: 8, // Brightness
             emissiveMap: this.texture,
         });
         this.lighting = this.getLight(this.type);
@@ -32,6 +33,7 @@ export class Star {
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         this.light.position.set(x, y, z);
         this.mesh.position.set(x, y, z); // Set star position
+        this.mesh.layers.set(this.BLOOM_LAYER);
         scene.add(this.mesh); // Add star to scene
         scene.add(this.light);
         this.logDetails(x, y, z); // Log star details

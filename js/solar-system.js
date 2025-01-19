@@ -17,7 +17,7 @@ export class SolarSystem {
     createPlanet(name, radius, texturePath, position) {
         const geometry = new THREE.SphereGeometry(radius, 120, 120);
         const texture = this.textureLoader.load(texturePath);
-        const material = new THREE.MeshStandardMaterial({ map: texture });
+        const material = new THREE.MeshStandardMaterial({ map: texture, emissive: new THREE.Color(0x000000) });
         const planet = new THREE.Mesh(geometry, material);
 
         planet.position.set(position.x, position.y, position.z);

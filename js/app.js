@@ -9,6 +9,7 @@ import { SolarSystem } from './solar-system.js';
 import { Marker, MarkerType } from './marker.js';
 import { Laser, MultiplayerLaser } from './laser.js';
 import { Star, StarType } from './star.js';
+import { Planet } from './planet.js';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://google.com/docs/web/setup#available-libraries
 
@@ -70,13 +71,13 @@ function init(username) {
     };
   }
   camera.position.z = 5;
-  const starCount = 100000; // Number of stars
+  const starCount = 110000; // Number of stars
   const starGeometry = new THREE.BufferGeometry();
   const starPositions = new Float32Array(starCount * 3); // x, y, z for each star
   const starSpheres = []; // Array to keep track of spheres near stars
 
   const maxRadius = 5000000000; // Maximum radius of the starfield
-  const thresholdDistance = 300000;
+  const thresholdDistance = 400000;
   const movement = {
     forward: false,
     backward: false,
@@ -105,8 +106,8 @@ function init(username) {
   const transitionSpeed = 0.01;
   const fovSpeed = 0.01; // How quickly FOV changes
   const composer = new THREE.EffectComposer(renderer);
+  composer.setSize(window.innerWidth, window.innerHeight);
   const renderPass = new THREE.RenderPass(scene, camera);
-  composer.addPass(renderPass);
   let warpMode = warpSpeeds.One;
   let impulseMode = impulseSpeeds.Slow;
   document.getElementById("impulse-speed").addEventListener("change", () => {
@@ -191,8 +192,43 @@ function init(username) {
       }
     }
   }
+  function generatePlanetTexture(size = 512) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
   
-
+    const noise2D = createNoise2D(); // Create a Simplex noise instance using SkyPack
+    const imageData = ctx.createImageData(size, size);
+  
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const nx = x / size - 0.5;
+        const ny = y / size - 0.5;
+  
+        // Generate noise value
+        const elevation = noise2D(nx * 5, ny * 5); // Scale coordinates for detail
+        const colorValue = Math.floor((elevation + 1) * 128); // Normalize to 0-255
+  
+        // Apply a color map (e.g., ocean vs land)
+        const [r, g, b] = elevation > 0 ? [colorValue, 180, 80] : [0, 80, 200];
+  
+        // Set pixel color
+        const index = (y * size + x) * 4;
+        imageData.data[index] = r;     // Red
+        imageData.data[index + 1] = g; // Green
+        imageData.data[index + 2] = b; // Blue
+        imageData.data[index + 3] = 255; // Alpha
+      }
+    }
+  
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+  }
+  window.scene = scene;
+  function createPlanet(scene) {
+    const planet = new Planet(ship.position.x, ship.position.y, ship.position.z, scene);
+  }
+  window.createPlanet = createPlanet;
 
   let pendingDamage = false;
   function teleportToRandomStar() {
@@ -207,7 +243,6 @@ function init(username) {
     const y = positions[randomIndex * 3 + 1];
     const z = positions[randomIndex * 3 + 2];
 
-    // Teleport the camera to the star's position
     ship.position.set(x, y, z);
   }
   function processDamage() {
@@ -410,6 +445,7 @@ function init(username) {
   // Remove player from Firebase on disconnect
   onDisconnect(playerRef).remove();
   window.teleportToRandomStar = teleportToRandomStar;
+  renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
   let solarSystem = new SolarSystem(scene);
@@ -430,7 +466,7 @@ function init(username) {
   let sunMaterial = new THREE.MeshStandardMaterial({
     map: sunTexture,
     emissive: new THREE.Color(0xffffff), // Red emissive color
-    emissiveIntensity: 2, // Emissive strength
+    emissiveIntensity: 15, // Emissive strength
     emissiveMap: sunTexture, // Optional: use the texture as an emissive map
   });
   let sun = new THREE.Mesh(sunGeometry, sunMaterial);
@@ -457,17 +493,16 @@ function init(username) {
   // Add a bloom effect for the warp glow
   const bloomPass = new THREE.UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.5,
-    0.4,
-    0.85
+    3,
+    1,
+    0.95
   );
-  composer.addPass(bloomPass);
 
   // Warp Shader (for radial blur)
   const warpShader = {
     uniforms: {
       tDiffuse: { value: null },
-      strength: { value: 0.0 }, // Strength of the warp blur
+      strength: { value: 0.5 }, // Strength of the warp blur
     },
     vertexShader: `
       varying vec2 vUv;
@@ -490,7 +525,6 @@ function init(username) {
   };
   const warpPass = new THREE.ShaderPass(warpShader);
   let markers = [];
-  composer.addPass(warpPass);
   // Blue filter shader
   const blueFilterShader = {
     uniforms: {
@@ -520,7 +554,9 @@ function init(username) {
   };
 
   const blueFilterPass = new THREE.ShaderPass(blueFilterShader);
-  composer.addPass(blueFilterPass);
+  composer.addPass(renderPass);
+composer.addPass(bloomPass);
+
   let fireZoom = false;
   document.addEventListener('keydown', (event) => {
     switch (event.key.toLowerCase()) {
@@ -557,6 +593,8 @@ function init(username) {
       // Press 'w' to trigger warp
       warpActive = true;
       fovTarget = maxFov;
+      composer.render();
+      blueFilterPass.renderToScreen = true;
       warpPass.uniforms.strength.value = 7; // Activate blur
       toggleWarpEffect();
     }
@@ -851,9 +889,6 @@ function init(username) {
     checkStars();
     camera.updateProjectionMatrix();
     composer.render();
-
-    // Render the scene
-    renderer.render(scene, camera);
   }
 
   animate();
