@@ -124,6 +124,17 @@ button:hover {
   color: black;
   background: linear-gradient(to right,#55cfff, #007fb9);
 }
+#chat {
+  position: absolute;
+  padding: 15px;
+  font-size: 20px;
+  top: 0;
+  right: 0;
+  margin: 20px;
+  border-radius: 15px;
+  color: rgb(255, 255, 255);
+  background: linear-gradient(to right,#ff9898, #ff0000);
+}
 #warp-menu {
   position: absolute;
   padding: 15px;
@@ -136,6 +147,21 @@ button:hover {
   color: white;
   background: linear-gradient(to right,#003cbd79, #007eb959);
   border-color: #00ffff;
+  border-width: 2px;
+  border-style: solid;
+}
+#chat-menu {
+  position: absolute;
+  padding: 15px;
+  top: 7%;
+  right: 0;
+  min-width: 20%;
+  min-height: 40%;
+  margin: 20px;
+  border-radius: 15px;
+  color: white;
+  background: linear-gradient(to right,#bd710079, #b9000059);
+  border-color: #ff0000;
   border-width: 2px;
   border-style: solid;
 }

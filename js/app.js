@@ -51,6 +51,16 @@ function init(username) {
       menu.style.display = "none";
     }
   });
+  document.querySelector("#chat").addEventListener("click", () => {
+    let menu = document.getElementById("chat-menu");
+    console.log("yo")
+    if (menu.style.display == "none") {
+      menu.style.display = "block";
+    } else {
+      menu.style.display = "none";
+    }
+  });
+  
   const playerId = username;
   let health = 200;
   let shield = 100;
@@ -893,6 +903,15 @@ composer.addPass(bloomPass);
     camera.updateProjectionMatrix();
     composer.render();
   }
+  setInterval(() => {
+    if (shield < 1 && health != 200) {
+      health++;
+    } else {
+      if (shield < 100) {
+        shield++;
+      }
+    }
+  }, 1500);
 
   animate();
 

@@ -38,7 +38,7 @@ export class Laser {
   }
 
   checkHit() {
-    const hitRadius = 0.01;
+    const hitRadius = 0.02;
 
     for (let playerId in this.otherPlayers) {
       const player = this.otherPlayers[playerId];
