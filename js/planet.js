@@ -19,18 +19,31 @@ export class PlanetType {
     constructor(x, y, z, scene) {
       this.size = this.calculateSize(x, y, z); // Determine size based on type
       this.type = this.determineType(this.size); // Planet type
-      this.texture = this.generateTexture(this.type, this.size); // Dynamically generated texture
+      this.texture = this.generateTexture(this.type, undefined, x, y, z); // Dynamically generated texture
       this.geometry = new THREE.SphereGeometry(this.size, 64, 64); // Planet geometry
       this.material = new THREE.MeshStandardMaterial({
-        map: new THREE.CanvasTexture(this.texture), // Use generated texture
+        map: null, // Placeholder for the texture
         emissive: new THREE.Color(0x000000), // Non-glowing planets
         emissiveIntensity: 0,
       });
-      this.mesh = new THREE.Mesh(this.geometry, this.material);
+      
+      this.mesh = new THREE.Mesh(this.geometry, this.material); // Create the mesh
       this.mesh.position.set(x, y, z);
-      scene.add(this.mesh); // Add planet to scenes
+      scene.add(this.mesh); 
+      this.generateAndApplyTexture(this.type, 600, x, y, z);
     }
-  
+    async generateAndApplyTexture(type, size, planetX, planetY, planetZ) {
+      // Generate the texture asynchronously
+      const canvas = await this.generateTexture(type, size, planetX, planetY, planetZ);
+    
+      // Convert the canvas into a Three.js texture
+      const texture = new THREE.CanvasTexture(canvas);
+    
+      // Apply the texture to the material
+      this.material.map = texture;
+      this.material.needsUpdate = true; // Notify Three.js of material update
+    }
+    
     // Determine the type of the planet based on size
     determineType(size) {
       if (size < 15) return PlanetType.Habitable;
@@ -44,46 +57,102 @@ export class PlanetType {
         const noise = hash(x, y, z);
         return noise * 50; // Scale the size (adjust 3000 as needed)
     }
+    hash(x, y, z) {
+      const seed = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791); // Large prime multipliers
+      return (seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff; // Consistent pseudo-random output
+    }
+    
   
     // Generate texture dynamically based on planet type
-    generateTexture(type, size) {
+    async generateTexture(type, size = 700, planetX, planetY, planetZ) {
       const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 512;
+      canvas.width = canvas.height = size;
       const ctx = canvas.getContext('2d');
       const noise2D = createNoise2D();
-  
+    
       for (let y = 0; y < canvas.height; y++) {
         for (let x = 0; x < canvas.width; x++) {
-          const nx = x / canvas.width - 0.5;
-          const ny = y / canvas.height - 0.5;
-          const elevation = noise2D(nx * 10, ny * 10); // Scale for detail
-          const color = this.getColorMap(type, elevation); // Get color based on type and elevation
-  
+          // Calculate noise value for this point
+          const nx = x / canvas.width - 0.5; // Normalize to -0.5 to 0.5
+          const ny = y / canvas.height - 0.5; // Normalize to -0.5 to 0.5
+    
+          // Generate elevation with consistent 3D noise
+          const elevation =
+            0.6 * noise2D(nx * 10, ny * 10) +
+            0.3 * noise2D(nx * 20, ny * 20) +
+            0.1 * noise2D(nx * 40, ny * 40);
+    
+          // Handle poles (top and bottom)
+          if (y < 0.05 * canvas.height || y > 0.95 * canvas.height) {
+            ctx.fillStyle = `rgb(255, 255, 255)`; // White for poles
+            ctx.fillRect(x, y, 1, 1);
+            continue;
+          }
+    
+          // Normalize elevation and apply the color map
+          const normalizedElevation = Math.max(-1, Math.min(1, elevation));
+          const color = this.getColorMap(type, normalizedElevation, x, y, planetX, planetY, planetZ);
+    
           // Set pixel color
-          const index = (y * canvas.width + x) * 4;
           ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
           ctx.fillRect(x, y, 1, 1);
         }
       }
       return canvas;
     }
+    
+
+    
   
-    // Get a color map for the planet based on type and elevation
-    getColorMap(type, elevation) {
+    getColorMap(type, elevation, x, y, planetX, planetY, planetZ) {
+      // Add subtle variations using the 3D hash function
+      const hashValue = (this.hash(x + planetX, y + planetY, planetZ) % 30) - 15; // Random variation between -15 and 15
+    
       switch (type) {
-        case PlanetType.Habitable:
-          return elevation > 0 ? [34, 139, 34] : [0, 105, 148]; // Green for land, blue for water
-        case PlanetType.RockyAtmosphere:
-          return elevation > 0 ? [139, 69, 19] : [210, 180, 140]; // Brown and tan
-        case PlanetType.RockyUninhabitable:
-          return elevation > 0 ? [169, 169, 169] : [105, 105, 105]; // Dark gray tones
-        case PlanetType.GasGiant:
-          const gasColor = Math.floor((elevation + 1) * 128); // Gradient
-          return [gasColor, gasColor, 255]; // Blue hues
+        case PlanetType.Habitable: {
+          if (elevation > 0.4) {
+            return [160 + elevation * 50 + hashValue, 140 + elevation * 30, 100 + elevation * 20];
+          } else if (elevation > 0.1) {
+            return [34 + elevation * 50 + hashValue, 139 + elevation * 60, 34 + elevation * 30];
+          } else if (elevation > -0.1) {
+            return [210 + hashValue, 190, 140];
+          } else {
+            return [0, 100 + hashValue, 200 - hashValue];
+          }
+        }
+    
+        case PlanetType.RockyAtmosphere: {
+          if (elevation > 0.3) {
+            return [200 - elevation * 60 + hashValue, 80 + hashValue, 40];
+          } else if (elevation > 0.1) {
+            return [210 + hashValue, 180 + hashValue, 140];
+          } else {
+            return [240 - elevation * 50, 220 - elevation * 30 + hashValue, 200];
+          }
+        }
+    
+        case PlanetType.RockyUninhabitable: {
+          if (elevation > 0.2) {
+            return [169 + elevation * 50, 50 + hashValue, 20];
+          } else if (elevation > -0.2) {
+            return [120 + hashValue, 120, 120];
+          } else {
+            return [80, 80, 80 + hashValue];
+          }
+        }
+    
+        case PlanetType.GasGiant: {
+          const band = Math.sin(elevation * 10 * Math.PI) > 0 ? 255 : 200;
+          return [band, 150 + elevation * 50 - hashValue, 255 - hashValue];
+        }
+    
         default:
-          return [255, 255, 255]; // Default to white
+          return [255, 255, 255]; // Default white for unknown types
       }
     }
+    
+
+    
   
     // Log planet details
     logDetails(x, y, z) {
