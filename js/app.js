@@ -11,6 +11,7 @@ import { Laser, MultiplayerLaser } from './laser.js';
 import { Star, StarType } from './star.js';
 import { Planet } from './planet.js';
 import { StarSystem } from './starsystem.js';
+import { Nebula } from './nebula.js';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://google.com/docs/web/setup#available-libraries
 
@@ -116,6 +117,7 @@ function init(username) {
     Medium: 0.09,
     Sscruise: 1
   }
+
   const renderer = new THREE.WebGLRenderer();
   const transitionSpeed = 0.01;
   const fovSpeed = 0.01; // How quickly FOV changes
@@ -206,6 +208,8 @@ function init(username) {
       }
     }
   }
+  // const nebulaPosition = new THREE.Vector3(10000000, 0, -5000);
+  // const nebula = new Nebula(scene, nebulaPosition, 1000000, 72, 500000);
   function generatePlanetTexture(size = 512) {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
@@ -303,6 +307,7 @@ function init(username) {
   // Listen for updates to other players
   const playersRef = ref(db, "players");
   const lasersRef = ref(db, "lasers");
+  const chatRef = ref(db, "chat");
   // Listen for new players added
   onChildAdded(playersRef, (snapshot) => {
     const otherPlayerId = snapshot.key;
@@ -352,6 +357,51 @@ function init(username) {
       otherPlayerModel.rotation.set(otherPlayerData.rx, otherPlayerData.ry, otherPlayerData.rz);
     }
   });
+  
+  // Listen for new messages added to the chat
+  onChildAdded(chatRef, (snapshot) => {
+    const chatBox = document.getElementById("chat-box");
+    const message = snapshot.val();
+    const newTextElement = document.createElement("p");
+  
+    // Display the message along with the username (snapshot.key) and the message content
+    newTextElement.innerHTML = `<div style="color: red; display: inline-block;">${message.username}: </div> ${message.message}`;;
+    chatBox.appendChild(newTextElement);
+  });
+  
+  // Listen for changes in the 'latestmessage' property using onChildChanged
+  onChildChanged(chatRef, (snapshot) => {
+    const latestMessage = snapshot.val();
+    if (snapshot.key === "latestmessage" && latestMessage) {
+      const chatBox = document.getElementById("chat-box");
+      const newTextElement = document.createElement("p");
+  
+      // Display the latest message with the username
+      newTextElement.innerHTML = `<div style="color: red; display: inline-block;">${latestMessage.username}: </div> ${latestMessage.message}`;
+      chatBox.appendChild(newTextElement);
+    }
+  });
+  
+  // Handle sending a new message
+  document.getElementById("chat-send").addEventListener('click', () => {
+    const chatInput = document.getElementById("chat-input");
+    const messageText = chatInput.value;
+  
+    if (messageText.trim() !== "") {
+      const message = {
+        username: playerId,  // Use the playerId as the username
+        message: messageText
+      };
+      let lchatRef = ref(db, "chat/latestmessage")
+      // Set the latestmessage property in the Firebase database
+      set(lchatRef, message);
+  
+      // Clear the input field
+      chatInput.value = "";
+    }
+  });
+  
+
 
   // Handle player removal
   onChildRemoved(playersRef, (snapshot) => {

@@ -152,19 +152,70 @@ button:hover {
 }
 #chat-menu {
   position: absolute;
-  padding: 15px;
   top: 7%;
   right: 0;
-  min-width: 20%;
-  min-height: 40%;
+  width: 30%; /* Set a specific width */
+  height: 50%; /* Set a specific height */
   margin: 20px;
   border-radius: 15px;
+  padding: 0; /* Remove padding */
   color: white;
-  background: linear-gradient(to right,#bd710079, #b9000059);
-  border-color: #ff0000;
-  border-width: 2px;
-  border-style: solid;
+  background: linear-gradient(to right, #bd710079, #b9000059);
+  border: 2px solid #ff0000;
+  display: flex; /* Use flexbox for children */
+  flex-direction: column; /* Stack children vertically */
+  box-sizing: border-box; /* Include borders in size calculation */
 }
+
+#chat-box {
+  flex: 1; /* Make it take up all remaining space */
+  margin: 15px; /* Add space inside the parent */
+  border-radius: 15px;
+  color: black; /* Text color */
+  background: linear-gradient(to right, #d8feff, #ffd8d8);
+  border: 2px solid #ff0000;
+  height: 60%;
+  overflow-y: scroll;
+  justify-content: center; /* Center interior content horizontally */
+  align-items: center; /* Center interior content vertically */
+  box-sizing: border-box; /* Include padding and borders in dimensions */
+}
+
+#chat-input-wrapper {
+  display: flex; /* Use flexbox to align input and button */
+  justify-content: space-between; /* Distribute input and button */
+  align-items: center; /* Center them vertically */
+  margin: 15px; /* Add space inside the parent */
+}
+
+#chat-input {
+  flex: 1; /* Make it take up all remaining space */
+  margin-right: 10px; /* Space between input and button */
+  border-radius: 15px;
+  color: black; /* Text color */
+  background: linear-gradient(to right, #d8feff, #ffd8d8);
+  border: 2px solid #ff0000;
+  height: 40px; /* Adjust height as necessary */
+  padding: 5px 10px; /* Add padding for text input */
+  box-sizing: border-box; /* Include padding and borders in dimensions */
+}
+
+#chat-send {
+  border-radius: 15px;
+  color: white;
+  background: linear-gradient(to right, #ff6600, #ff0000);
+  border: 2px solid #ff0000;
+  height: 40px; /* Set button height */
+  padding: 0 10px; /* Adjust button padding */
+  cursor: pointer;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+
+
+
+
 #health-bar-ui {
   position: absolute;
   padding: 20px;
