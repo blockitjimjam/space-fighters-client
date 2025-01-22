@@ -185,6 +185,8 @@ button:hover {
   border: 2px solid #ff0000;
   height: 60%;
   overflow-y: scroll;
+  overflow-wrap: break-word;
+  overflow-x: hidden;
   justify-content: center; /* Center interior content horizontally */
   align-items: center; /* Center interior content vertically */
   box-sizing: border-box; /* Include padding and borders in dimensions */
@@ -228,16 +230,24 @@ button:hover {
 #health-bar-ui {
   position: absolute;
   padding: 20px;
-  border-top-right-radius: 5em;
-  bottom: 0;
-  width: 20%;
-  left: 0;
-  background-image: linear-gradient(to bottom right, rgba(56, 56, 56, 0.753), rgba(201, 201, 201, 0.699));
+  border-radius: 0 15ch 0 0; /* Rounded top corners */
+  bottom: 0; /* Slight lift off the bottom */
+  width: 25%; /* Slightly larger for better visibility */
+  left: 0; 
+  background: linear-gradient(to bottom right, rgba(116, 0, 0, 0.8), rgba(201, 201, 201, 0.5));
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.4); /* Adds a subtle shadow */
+  border: 2px solid rgba(255, 0, 0, 0.2); /* Highlighted border for a polished look */
+  overflow: hidden; /* Ensures child elements stay within bounds */
+  transition: 0.5s;
+}
+#health-bar-ui:hover {
+  width: 30%;
+  border: 2px solid rgba(255, 0, 0, 0.719); /* Highlighted border for a polished look */
 }
 .progress-container {
   width: 100%;
   height: 30px;
-  background-color: #1d0000;
+  background-color: #300000;
   border-radius: 15px;
   overflow: hidden;
 }
