@@ -39,7 +39,7 @@ const auth = getAuth(app);
 window.auth = auth;
 const db = getDatabase(app);
 const firestoreDB = getFirestore(app);
-const loader = new THREE.OBJLoader();
+const loader = new THREE.GLTFLoader();
 document.querySelector(".game-ui-container").style.display = "none";
 function init(username) {
   document.querySelector(".game-ui-container").style.display = "block";
@@ -75,7 +75,7 @@ function init(username) {
     75, // Field of view
     window.innerWidth / window.innerHeight, // Aspect ratio
     0.001, // Near clipping plane
-    1000000 // Far clipping plane
+    10000000000 // Far clipping plane
   );
   function seededRandom(seed) {
     let value = seed % 2147483647;
@@ -198,6 +198,10 @@ function init(username) {
         if (!starSpheres[i]) {
           const starSystem = new StarSystem(x, y, z, scene, playerTextContainer, ship);
           markers.push(starSystem.marker);
+          starSystem.planets.forEach((element) => {
+            markers.push(element.marker);
+            console.log(markers);
+          });
           starSpheres[i] = starSystem;
         }
       } else {
@@ -302,6 +306,7 @@ function init(username) {
   playerTextContainer.style.position = 'absolute';
   playerTextContainer.style.top = '0';
   playerTextContainer.style.left = '0';
+  playerTextContainer.id = 'markerContainer';
   document.body.appendChild(playerTextContainer);
 
   // Listen for updates to other players
@@ -315,9 +320,9 @@ function init(username) {
       const otherPlayerData = snapshot.val();
 
       // Load the model for other players
-      loader.load('../assets/models/placeholdership.obj', (object) => {
+      loader.load('../assets/models/Rainbowshipfinal.glb', (object) => {
         const otherPlayerModel = new THREE.Group();
-        otherPlayerModel.add(object);
+        otherPlayerModel.add(object.scene);
         otherPlayerModel.scale.set(0.001, 0.001, 0.001);  // Scale to match size
         otherPlayerModel.position.set(otherPlayerData.x, otherPlayerData.y, otherPlayerData.z);
         scene.add(otherPlayerModel);
@@ -521,6 +526,7 @@ function init(username) {
   });
   let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
   scene.add(atmosphere);
+  let nebula = new Nebula(scene, new THREE.Vector3(3115000000, 0, 0), 200000000, 31, 500000);
   // Light setup
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
   scene.add(ambientLight);
@@ -541,15 +547,32 @@ function init(username) {
   pointLight.position.set(5000, 5, 5);
   scene.add(pointLight);
 
-  let ship;
-  loader.load('../assets/models/placeholdership.obj', (object) => {
-    ship = object;
+  window.ship = false;
+  loader.load('../assets/models/Rainbowshipfinal.glb', (gltf) => {
+    const ship = gltf.scene; // Extract the scene from the loaded GLB
+    window.ship = ship; // Make it globally accessible if necessary
+
+    // Set transformations
     ship.position.set(15, 0, 0); // Initial position
-    ship.rotation.x = 1.512;
-    ship.scale.set(0.001, 0.001, 0.001);
+    ship.rotation.x = -Math.PI / 4
+    ship.scale.set(0.001, 0.001, 0.001); // Scale the model
+
+    // Add the ship to the scene
     scene.add(ship);
-    markers.push(new Marker(MarkerType.Planet, "Earth", playerTextContainer, solarSystem.planets["earth"], ship, 1000000))
-  });
+
+    // Add a marker (assuming Marker is properly defined elsewhere)
+    markers.push(
+        new Marker(
+            MarkerType.Planet,
+            "Earth",
+            playerTextContainer,
+            solarSystem.planets["earth"],
+            ship,
+            1000000
+        )
+    );
+});
+
 
   // Movement and rotation controls
 
@@ -765,7 +788,7 @@ composer.addPass(bloomPass);
   });
 
   window.speed = 0.003; // Default speed
-  const cameraOffset = new THREE.Vector3(0, 0.03, 0.1); // Offset from the player
+  const cameraOffset = new THREE.Vector3(0, 0.01, 0.03); // Offset from the player
 
   function interpolate(current, target, factor, threshold = 0.01) {
     const interpolated = current + (target - current) * factor;

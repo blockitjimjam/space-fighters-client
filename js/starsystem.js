@@ -8,6 +8,7 @@ export class StarSystem {
         this.star = new Star(x, y, z, scene);
         this.marker = new Marker(MarkerType.StarSystem, "Undiscovered System", markerContainer, this.star.mesh, ship, 100);
         this.planets = this.generatePlanets(x, y, z);
+        this.markerContainer = markerContainer;
         this.logDetails();
     }
 

@@ -18,9 +18,9 @@ export class Nebula {
         const sphereRadius = this.mainRadius * (0.8 + Math.random() * 0.4); // Slight variation in size
   
         // Randomly position spheres near the main position
-        const offsetX = (Math.random() - 0.5) * this.mainRadius * 2;
-        const offsetY = (Math.random() - 0.5) * this.mainRadius * 2;
-        const offsetZ = (Math.random() - 0.5) * this.mainRadius * 2;
+        const offsetX = (Math.random() - 0.5) * this.mainRadius * 4;
+        const offsetY = (Math.random() - 0.5) * this.mainRadius * 4;
+        const offsetZ = (Math.random() - 0.5) * this.mainRadius * 4;
         const spherePosition = new THREE.Vector3(
           this.position.x + offsetX,
           this.position.y + offsetY,
@@ -32,7 +32,7 @@ export class Nebula {
     }
   
     // Create particles for a sphere
-    createSphereParticles(position, radius, particleCount, baseColor = new THREE.Color(0x008F39)) {
+    createSphereParticles(position, radius, particleCount, baseColor = new THREE.Color(0x910000)) {
         const particlePositions = new Float32Array(particleCount * 3);
         const particleColors = new Float32Array(particleCount * 3);
       
@@ -79,7 +79,8 @@ export class Nebula {
         geometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
       
         const material = new THREE.PointsMaterial({
-          size: 10,
+          size: 50,
+          sizeAttenuation: true,
           vertexColors: true,
           transparent: true,
           blending: THREE.AdditiveBlending,
