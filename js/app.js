@@ -526,7 +526,7 @@ function init(username) {
   });
   let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
   scene.add(atmosphere);
-  let nebula = new Nebula(scene, new THREE.Vector3(3115000000, 0, 0), 200000000, 31, 500000);
+  let nebula = new Nebula(scene, new THREE.Vector3(3115000000, 0, 1000000000), 200000000, 31, 500000);
   // Light setup
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
   scene.add(ambientLight);
