@@ -39,7 +39,7 @@ const auth = getAuth(app);
 window.auth = auth;
 const db = getDatabase(app);
 const firestoreDB = getFirestore(app);
-const loader = new THREE.GLTFLoader();
+const loader = new THREE.OBJLoader();
 document.querySelector(".game-ui-container").style.display = "none";
 function init(username) {
   document.querySelector(".game-ui-container").style.display = "block";
@@ -320,10 +320,10 @@ function init(username) {
       const otherPlayerData = snapshot.val();
 
       // Load the model for other players
-      loader.load('../assets/models/spaceshipmini.glb', (object) => {
+      loader.load('../assets/models/placeholdership.obj', (object) => {
         const otherPlayerModel = new THREE.Group();
-        otherPlayerModel.add(object.scene);
-        otherPlayerModel.scale.set(0.01, 0.01, 0.01);  // Scale to match size
+        otherPlayerModel.add(object);
+        otherPlayerModel.scale.set(0.001, 0.001, 0.001);  // Scale to match size
         otherPlayerModel.position.set(otherPlayerData.x, otherPlayerData.y, otherPlayerData.z);
         scene.add(otherPlayerModel);
         otherPlayers[otherPlayerId] = otherPlayerModel;
@@ -548,14 +548,12 @@ function init(username) {
   scene.add(pointLight);
 
   window.ship = false;
-  loader.load('../assets/models/spaceshipmini.glb', (gltf) => {
-    const ship = gltf.scene; // Extract the scene from the loaded GLB
-    window.ship = ship; // Make it globally accessible if necessary
+  loader.load('../assets/models/placeholdership.obj', (object) => {
+    window.ship = object; // Make it globally accessible if necessary
 
     // Set transformations
     ship.position.set(15, 0, 0); // Initial position
-    ship.rotation.x = -Math.PI / 4
-    ship.scale.set(0.01, 0.01, 0.01); // Scale the model
+    ship.scale.set(0.001, 0.001, 0.001); // Scale the model
 
     // Add the ship to the scene
     scene.add(ship);
@@ -788,7 +786,7 @@ composer.addPass(bloomPass);
   });
 
   window.speed = 0.003; // Default speed
-  const cameraOffset = new THREE.Vector3(0, 0.006, 0.03); // Offset from the player
+  const cameraOffset = new THREE.Vector3(0, 0.007, 0.04); // Offset from the player
 
   function interpolate(current, target, factor, threshold = 0.01) {
     const interpolated = current + (target - current) * factor;
