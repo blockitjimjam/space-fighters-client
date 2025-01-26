@@ -1,5 +1,5 @@
 import { createNoise2D } from 'https://cdn.skypack.dev/simplex-noise@4.0.3';
-import { hash } from './app.js';
+import { hash } from './mathutils.js';
 import { Marker, MarkerType } from './marker.js';
 export class PlanetType {
   static Habitable = new PlanetType("Habitable");
@@ -19,10 +19,8 @@ export class Planet {
   constructor(x, y, z, scene) {
     this.size = this.calculateSize(x, y, z); // Determine size based on type
     this.type = this.determineType(this.size); // Planet type
-    this.texture = this.generateTexture(this.type, undefined, x, y, z); // Dynamically generated texture
     this.geometry = new THREE.SphereGeometry(this.size, 64, 64); // Planet geometry
     this.material = new THREE.MeshStandardMaterial({
-      map: null, // Placeholder for the texture
       emissive: new THREE.Color(0x000000), // Non-glowing planets
       emissiveIntensity: 0,
     });
@@ -31,19 +29,25 @@ export class Planet {
     this.mesh.position.set(x, y, z);
     scene.add(this.mesh);
     this.marker = new Marker(MarkerType.Planet, "Undiscovered Planet", document.getElementById("markerContainer"), this.mesh, ship, 20);
-    this.generateAndApplyTexture(this.type, 600, x, y, z);
+    this.generateAndApplyTexture(this.type, 1024, x, y, z);
   }
   async generateAndApplyTexture(type, size, planetX, planetY, planetZ) {
-    // Generate the texture asynchronously
-    const canvas = await this.generateTexture(type, size, planetX, planetY, planetZ);
-
-    // Convert the canvas into a Three.js texture
-    const texture = new THREE.CanvasTexture(canvas);
-
-    // Apply the texture to the material
-    this.material.map = texture;
-    this.material.needsUpdate = true; // Notify Three.js of material update
+    console.log("I did a thing")
+    const worker = new Worker('./js/textureWorker.js', { type: 'module' });
+    console.log("i made a worker thingy")
+    worker.postMessage({type, size, planetX, planetY, planetZ });
+    console.log(" i posted a cool message beacause im cool")
+  
+    worker.onmessage = (e) => {
+      const imageBitmap = e.data; // We get the ImageBitmap from the worker
+      console.log("yo new ImageBitmap texture")
+      const texture = new THREE.CanvasTexture(imageBitmap); // Use the ImageBitmap as a texture
+      this.material.map = texture;
+      this.material.needsUpdate = true;
+      worker.terminate();
+    };
   }
+  
 
   // Determine the type of the planet based on size
   determineType(size) {
@@ -65,7 +69,7 @@ export class Planet {
 
 
   // Generate texture dynamically based on planet type
-  async generateTexture(type, size = 1024, planetX, planetY, planetZ) {
+  async generateTexture(type, size = 2048, planetX, planetY, planetZ) {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     const ctx = canvas.getContext('2d');

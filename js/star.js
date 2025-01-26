@@ -1,4 +1,4 @@
-import { hash } from './app.js';
+import { hash } from './mathutils.js';
 export class StarType {
     static Neutron = new StarType("Neutron");
     static WhiteDwarf = new StarType("WhiteDwarf");

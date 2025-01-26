@@ -27,9 +27,7 @@ const firebaseConfig = {
   appId: '1:976259904575:web:ee4134d8c59678dcfb348a',
   measurementId: 'G-EHXHPP69MJ',
 };
-export function hash(x, y, z) {
-  return Math.abs((Math.sin(x * 12.9898 + y * 78.233 + z * 45.164) * 43758.5453) % 1);
-}
+
 
 
 // Initialize Firebase
