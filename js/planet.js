@@ -23,6 +23,7 @@ export class Planet {
     this.material = new THREE.MeshStandardMaterial({
       emissive: new THREE.Color(0x000000), // Non-glowing planets
       emissiveIntensity: 0,
+      
     });
 
     this.mesh = new THREE.Mesh(this.geometry, this.material); // Create the mesh

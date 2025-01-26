@@ -43,14 +43,27 @@ function hash(x, y, z) {
 function getColorMap(type, elevation, x, y, planetX, planetY, planetZ) {
   // Add subtle variations using the 3D hash function
   const hashValue = (hash(x + planetX, y + planetY, planetZ) % 30) - 15;
+  const seaLevelOffset = (hash(x + planetX + 10, y + planetY + 10, planetZ + 10) % 20) - 10;
 
   switch (type.name) {
     case `Habitable`: {
-      if (elevation > 0.4) {
+      // Variations in grass colors
+      const grassColors = [
+        [34, 139, 34], // Green grass
+        [139, 34, 139], // Purple grass
+        [255, 20, 147], // Pink grass
+      ];
+      const grassColor = grassColors[Math.abs(hashValue) % grassColors.length];
+
+      if (elevation > 0.4 + seaLevelOffset / 100) {
         return [160 + elevation * 50 + hashValue, 140 + elevation * 30, 100 + elevation * 20];
-      } else if (elevation > 0.1) {
-        return [34 + elevation * 50 + hashValue, 139 + elevation * 60, 34 + elevation * 30];
-      } else if (elevation > -0.1) {
+      } else if (elevation > 0.1 + seaLevelOffset / 100) {
+        return [
+          grassColor[0] + elevation * 50 + hashValue,
+          grassColor[1] + elevation * 60,
+          grassColor[2] + elevation * 30,
+        ];
+      } else if (elevation > -0.1 + seaLevelOffset / 100) {
         return [210 + hashValue, 190, 140];
       } else {
         return [0, 100 + hashValue, 200 - hashValue];
@@ -59,27 +72,36 @@ function getColorMap(type, elevation, x, y, planetX, planetY, planetZ) {
 
     case `RockyAtmosphere`: {
       if (elevation > 0.3) {
-        return [200 - elevation * 60 + hashValue, 80 + hashValue, 40];
+        return [255 - elevation * 60 + hashValue, 200 - elevation * 50, 100 - elevation * 30];
       } else if (elevation > 0.1) {
-        return [210 + hashValue, 180 + hashValue, 140];
+        return [240 - elevation * 40 + hashValue, 160 - elevation * 30, 60];
       } else {
-        return [240 - elevation * 50, 220 - elevation * 30 + hashValue, 200];
+        return [220 - elevation * 50, 140 - elevation * 30 + hashValue, 40];
       }
     }
 
     case `RockyUninhabitable`: {
       if (elevation > 0.2) {
-        return [169 + elevation * 50, 50 + hashValue, 20];
+        return [255 - elevation * 50 + hashValue, 69, 0];
       } else if (elevation > -0.2) {
-        return [120 + hashValue, 120, 120];
+        return [255 - elevation * 20 + hashValue, 140, 0];
       } else {
-        return [80, 80, 80 + hashValue];
+        return [139, 69, 19 + hashValue];
       }
     }
 
     case `GasGiant`: {
-      const band = Math.sin(elevation * 10 * Math.PI) > 0 ? 255 : 200;
-      return [band, 150 + elevation * 50 - hashValue, 255 - hashValue];
+      // Smooth random base color
+      const baseColor = [
+        Math.abs(hashValue * 8) % 256,
+        Math.abs(hashValue * 5) % 256,
+        Math.abs(hashValue * 3) % 256,
+      ];
+      return [
+        baseColor[0] + elevation * 20,
+        baseColor[1] + elevation * 15,
+        baseColor[2] + elevation * 10,
+      ];
     }
 
     default:

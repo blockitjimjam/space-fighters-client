@@ -32,7 +32,7 @@ export class Nebula {
     }
   
     // Create particles for a sphere
-    createSphereParticles(position, radius, particleCount, baseColor = new THREE.Color(0x910000)) {
+    createSphereParticles(position, radius, particleCount, baseColor = new THREE.Color(0x3f055e)) {
         const particlePositions = new Float32Array(particleCount * 3);
         const particleColors = new Float32Array(particleCount * 3);
       
@@ -41,7 +41,7 @@ export class Nebula {
           const hslBase = baseColor.getHSL({});
           
           // Apply slight random variation to the hue, keeping saturation and lightness constant
-          const hueVariation = (Math.random() - 0.5) * 0.1; // Slight hue shift, between -5% and 5%
+          const hueVariation = (Math.random() - 1) * 0.1; // Slight hue shift, between -5% and 5%
           const newHue = Math.min(Math.max(hslBase.h + hueVariation, 0), 1); // Ensure hue is within [0, 1]
       
           // Convert back to RGB and return the color
@@ -114,6 +114,10 @@ export class Nebula {
       for (const sphere of this.spheres) {
         sphere.rotation.y += deltaTime * 0.05; // Rotate for dynamic effect
       }
+    }
+    hash(x, y, z) {
+      const seed = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791); // Large prime multipliers
+      return (seed * (seed * seed * 15731 + 789221) + 1376312589) & 0x7fffffff; // Consistent pseudo-random output
     }
   }
   

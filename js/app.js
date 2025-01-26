@@ -88,7 +88,7 @@ function init(username) {
   const starGeometry = new THREE.BufferGeometry();
   const starPositions = new Float32Array(starCount * 3); // x, y, z for each star
   const starSpheres = []; // Array to keep track of spheres near stars
-
+  let textureLoader = new THREE.TextureLoader();
   const maxRadius = 5000000000; // Maximum radius of the starfield
   const thresholdDistance = 400000;
   const movement = {
@@ -108,7 +108,7 @@ function init(username) {
     One: 5000,
     Two: 50000,
     Three: 100000,
-    Four: 200000
+    Four: 2000000
   }
   const impulseSpeeds = {
     Slow: 0.003,
@@ -169,9 +169,13 @@ function init(username) {
   }
 
   starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-
+  const starTexture = textureLoader.load('./assets/stars/startexture.svg');
   const starMaterial = new THREE.PointsMaterial({
-    color: 0xffffff, // White stars
+    map: starTexture,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false, // Avoid z-fighting
+    blending: THREE.AdditiveBlending,
     size: 1, // Star size
     sizeAttenuation: false, // Stars appear smaller with distance
   });
@@ -520,6 +524,7 @@ function init(username) {
   let atmosphereMaterial = new THREE.MeshBasicMaterial({
     color: 0x87ceeb, // Light blue color
     transparent: true,
+    depthWrite: false,
     opacity: 0.18, // Adjust opacity for a subtle effect
   });
   let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
@@ -529,7 +534,6 @@ function init(username) {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
   scene.add(ambientLight);
   let sunGeometry = new THREE.SphereGeometry(981, 120, 120);
-  let textureLoader = new THREE.TextureLoader();
   let sunTexture = textureLoader.load('./assets/solar-system/sun.jpg');
   let sunMaterial = new THREE.MeshStandardMaterial({
     map: sunTexture,
