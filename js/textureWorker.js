@@ -1,17 +1,14 @@
 import { createNoise2D } from 'https://cdn.skypack.dev/simplex-noise@4.0.3';
 import { PlanetType } from './planet.js';
+
 self.onmessage = ({ data }) => {
   console.log("Message received.");
   const { type, size, planetX, planetY, planetZ } = data;
   const canvas = new OffscreenCanvas(size, size);
-
-  const ctx = canvas.getContext("2d");
-  const noise2D = createNoise2D();
-
-  // Generate a global random seed for planet theme]
   const planetSeed = hash(planetX, planetY, planetZ); // Global seed for theme
   const themeColors = getPlanetTheme(type.name, planetSeed);
-  console.log(planetSeed)
+  const ctx = canvas.getContext("2d");
+  const noise2D = createNoise2D();
 
   // Generate the noise and apply it to the canvas
   for (let y = 0; y < size; y++) {
