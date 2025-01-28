@@ -59,7 +59,7 @@ function getPlanetTheme(type, planetSeed) {
       return [
         [34, 139, 34], // Green grass
         [139, 34, 139], // Purple grass
-        [255, 20, 147], // Pink grass
+        [200, 0, 0], // Pink grass
       ][planetSeed % 3];
 
     case "RockyAtmosphere":
@@ -84,7 +84,7 @@ function getColorFromElevation(type, elevation, themeColor) {
   // Calculate color based on elevation and global theme
   switch (type.name) {
     case `Habitable`: {
-      if (elevation > 0.2) {
+      if (elevation > 0.3) {
         // High elevation: Mountainous terrain
         return [
           255,  // Add more color variation for mountains

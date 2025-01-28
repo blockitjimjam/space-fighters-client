@@ -171,11 +171,6 @@ function init(username) {
   starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
   const starTexture = textureLoader.load('./assets/stars/startexture.svg');
   const starMaterial = new THREE.PointsMaterial({
-    map: starTexture,
-    transparent: true,
-    opacity: 1,
-    depthWrite: false, // Avoid z-fighting
-    blending: THREE.AdditiveBlending,
     size: 1, // Star size
     sizeAttenuation: false, // Stars appear smaller with distance
   });
