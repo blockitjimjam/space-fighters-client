@@ -60,7 +60,7 @@ update() {
                                now.getUTCSeconds();
     const dayFraction = secondsPassedToday / 86400;
 
-    this.earthMesh.rotation.y = -(dayFraction * Math.PI * 2) + Math.PI;
+    this.earthMesh.rotation.y = (dayFraction * Math.PI * 2) + Math.PI;
 
     const startOfYear = new Date(now.getUTCFullYear(), 0, 1);
     const dayOfYear = (now - startOfYear) / (1000 * 60 * 60 * 24);
