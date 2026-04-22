@@ -59,7 +59,7 @@ function init(username) {
       menu.style.display = "none";
     }
   });
-  
+
   const playerId = username;
   let health = 200;
   let shield = 100;
@@ -182,12 +182,12 @@ function init(username) {
   // Function to check proximity to stars and render spheres
   function checkStars() {
     const positions = starGeometry.attributes.position.array;
-  
+
     for (let i = 0; i < starCount; i++) {
       const x = positions[i * 3];
       const y = positions[i * 3 + 1];
       const z = positions[i * 3 + 2];
-  
+
       const starPosition = new THREE.Vector3(x, y, z);
       const distance = camera.position.distanceTo(starPosition);
 
@@ -215,22 +215,22 @@ function init(username) {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     const ctx = canvas.getContext('2d');
-  
+
     const noise2D = createNoise2D(); // Create a Simplex noise instance using SkyPack
     const imageData = ctx.createImageData(size, size);
-  
+
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
         const nx = x / size - 0.5;
         const ny = y / size - 0.5;
-  
+
         // Generate noise value
         const elevation = noise2D(nx * 5, ny * 5); // Scale coordinates for detail
         const colorValue = Math.floor((elevation + 1) * 128); // Normalize to 0-255
-  
+
         // Apply a color map (e.g., ocean vs land)
         const [r, g, b] = elevation > 0 ? [colorValue, 180, 80] : [0, 80, 200];
-  
+
         // Set pixel color
         const index = (y * size + x) * 4;
         imageData.data[index] = r;     // Red
@@ -239,7 +239,7 @@ function init(username) {
         imageData.data[index + 3] = 255; // Alpha
       }
     }
-  
+
     ctx.putImageData(imageData, 0, 0);
     return canvas;
   }
@@ -359,36 +359,36 @@ function init(username) {
       otherPlayerModel.rotation.set(otherPlayerData.rx, otherPlayerData.ry, otherPlayerData.rz);
     }
   });
-  
+
   // Listen for new messages added to the chat
   onChildAdded(chatRef, (snapshot) => {
     const chatBox = document.getElementById("chat-box");
     const message = snapshot.val();
     const newTextElement = document.createElement("p");
-  
+
     // Display the message along with the username (snapshot.key) and the message content
     newTextElement.innerHTML = `<div style="color: red; display: inline-block;">${message.username}: </div> ${message.message}`;;
     chatBox.appendChild(newTextElement);
   });
-  
+
   // Listen for changes in the 'latestmessage' property using onChildChanged
   onChildChanged(chatRef, (snapshot) => {
     const latestMessage = snapshot.val();
     if (snapshot.key === "latestmessage" && latestMessage) {
       const chatBox = document.getElementById("chat-box");
       const newTextElement = document.createElement("p");
-  
+
       // Display the latest message with the username
       newTextElement.innerHTML = `<div style="color: red; display: inline-block;">${latestMessage.username}: </div> ${latestMessage.message}`;
       chatBox.appendChild(newTextElement);
     }
   });
-  
+
   // Handle sending a new message
   document.getElementById("chat-send").addEventListener('click', () => {
     const chatInput = document.getElementById("chat-input");
     const messageText = chatInput.value;
-  
+
     if (messageText.trim() !== "") {
       const message = {
         username: playerId,  // Use the playerId as the username
@@ -397,12 +397,12 @@ function init(username) {
       let lchatRef = ref(db, "chat/latestmessage")
       // Set the latestmessage property in the Firebase database
       set(lchatRef, message);
-  
+
       // Clear the input field
       chatInput.value = "";
     }
   });
-  
+
 
 
   // Handle player removal
@@ -515,15 +515,7 @@ function init(username) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
   let solarSystem = new SolarSystem(scene);
-  let atmosphereGeometry = new THREE.SphereGeometry(9.05, 120, 120); // Slightly larger than the Earth
-  let atmosphereMaterial = new THREE.MeshBasicMaterial({
-    color: 0x87ceeb, // Light blue color
-    transparent: true,
-    depthWrite: false,
-    opacity: 0.18, // Adjust opacity for a subtle effect
-  });
-  let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-  scene.add(atmosphere);
+
   let nebula = new Nebula(scene, new THREE.Vector3(3115000000, 0, 1000000000), 200000000, 31, 500000);
   // Light setup
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
@@ -556,17 +548,46 @@ function init(username) {
     scene.add(ship);
 
     // Add a marker (assuming Marker is properly defined elsewhere)
-    markers.push(
-        new Marker(
-            MarkerType.Planet,
-            "Earth",
-            playerTextContainer,
-            solarSystem.planets["earth"],
-            ship,
-            1000000
-        )
+    console.log(solarSystem.planets);
+    // solarSystem.planets is an object with planet names as keys and Planet instances as values. We need to iterate over the values to access the Planet instances.
+    
+    setTimeout(() => {
+      markers.push(
+      // add a marker for all planets in the solar system
+      // we need to iterate over the keys and values of the solarSystem.planets object to create markers for each planet. the key is the planet name and the value is the Planet instance.
+      // we can use Object.entries to get an array of [key, value] pairs from the solarSystem.planets object, and then iterate over that array to create markers for each planet.
+      ...Object.entries(solarSystem.planets).map(([planetName, planetInstance]) => {
+        console.log(planetName, planetInstance);
+        return new Marker(
+          MarkerType.Planet,
+          planetName.charAt(0).toUpperCase() + planetName.slice(1), // Capitalize the first letter of the planet name
+          playerTextContainer,
+          planetInstance, // Use the mesh of the Planet instance
+          ship,
+          100
+      )
+      })
+
+      // new Marker(
+      //     MarkerType.Planet,
+      //     "Earth",
+      //     playerTextContainer,
+      //     solarSystem.planets["earth"],
+      //     ship,
+      //     1000000
+      // )
     );
-});
+    markers.push(new Marker(
+      MarkerType.Planet,
+      "Earth", // Capitalize the first letter of the planet name
+      playerTextContainer,
+      solarSystem.earthGroup,
+      ship,
+      100
+  ));
+    console.log(markers);
+    }, 4000);
+  });
 
 
   // Movement and rotation controls
@@ -606,7 +627,7 @@ function init(username) {
     `,
   };
   const warpPass = new THREE.ShaderPass(warpShader);
-  let markers = [];
+ window.markers = [];
   // Blue filter shader
   const blueFilterShader = {
     uniforms: {
@@ -637,7 +658,7 @@ function init(username) {
 
   const blueFilterPass = new THREE.ShaderPass(blueFilterShader);
   composer.addPass(renderPass);
-composer.addPass(bloomPass);
+  composer.addPass(bloomPass);
 
   let fireZoom = false;
   document.addEventListener('keydown', (event) => {
@@ -782,7 +803,7 @@ composer.addPass(bloomPass);
     }
   });
 
-  window.speed = 0.003; // Default speed
+  window.speed = 0.0003; // Default speed
   const cameraOffset = new THREE.Vector3(0, 0.007, 0.04); // Offset from the player
 
   function interpolate(current, target, factor, threshold = 0.01) {
