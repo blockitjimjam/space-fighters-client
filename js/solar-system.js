@@ -100,24 +100,26 @@ export class SolarSystem {
             }
         });
 
-// Orbit
-this.earthOrbitGroup.position.x = Math.cos(earthAngle) * earthData.radius;
-this.earthOrbitGroup.position.z = Math.sin(earthAngle) * earthData.radius;
+        // Specialized Earth Update
+        const earthData = this.orbitalData.earth;
+        const earthAngle = (daysPassed / earthData.period) * Math.PI * 2;
+        
+        // Move the whole Earth Group (tilt + meshes)
+        this.earthGroup.position.x = Math.cos(earthAngle) * earthData.radius;
+        this.earthGroup.position.z = Math.sin(earthAngle) * earthData.radius;
 
-// Axial tilt (constant)
-this.earthTiltGroup.rotation.z = this.EARTH_TILT;
+        // Daily Rotation
+        const secondsPassedToday = (now.getUTCHours() * 3600) + (now.getUTCMinutes() * 60) + now.getUTCSeconds();
+        const dayFraction = secondsPassedToday / 86400;
+        const dailyRotation = (dayFraction * Math.PI * 2) + Math.PI;
 
-// Rotate tilt direction with orbit (seasons)
-this.earthTiltGroup.rotation.y = earthAngle;
+        this.earthMesh.rotation.y = dailyRotation;
+        this.cloudMesh.rotation.y = dailyRotation;
 
-// Daily rotation
-const secondsPassedToday =
-    now.getUTCHours() * 3600 +
-    now.getUTCMinutes() * 60 +
-    now.getUTCSeconds();
-
-const dayFraction = secondsPassedToday / 86400;
-this.earthMesh.rotation.y = dayFraction * Math.PI * 2;
-this.cloudMesh.rotation.y = this.earthMesh.rotation.y;
+        // Seasonal Axial Tilt
+        const startOfYear = new Date(now.getUTCFullYear(), 0, 1);
+        const dayOfYear = (now - startOfYear) / (1000 * 60 * 60 * 24);
+        const seasonalTilt = Math.cos((dayOfYear - 172) * (Math.PI * 2 / 365)) * this.EARTH_TILT;
+        this.earthGroup.rotation.z = seasonalTilt;
     }
 }
